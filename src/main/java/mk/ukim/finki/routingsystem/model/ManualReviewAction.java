@@ -19,8 +19,10 @@ public class ManualReviewAction {
     @ManyToOne
     private Department manualChosenDepartment;
 
+    @Column(columnDefinition = "TEXT")
     private String documentTitle;
 
+    @Column(columnDefinition = "TEXT")
     private String documentText;
 
     private LocalDateTime timestamp;
@@ -29,11 +31,4 @@ public class ManualReviewAction {
     public ManualReviewAction() {
     }
 
-    public ManualReviewAction(Company company, Department manualChosenDepartment, String documentTitle, String documentText, LocalDateTime timestamp) {
-        this.company = company;
-        this.manualChosenDepartment = manualChosenDepartment;
-        this.documentTitle = documentTitle;
-        this.documentText = documentText;
-        this.timestamp = timestamp;
-    }
 }

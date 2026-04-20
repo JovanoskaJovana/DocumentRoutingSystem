@@ -22,7 +22,7 @@ public class DocumentAuth {
             return false;
         }
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(documentId, companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
         if (document == null) {

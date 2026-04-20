@@ -5,10 +5,8 @@ import mk.ukim.finki.routingsystem.model.dto.Employee.LoginRequestDto;
 import mk.ukim.finki.routingsystem.model.dto.Employee.LoginResponseDto;
 import mk.ukim.finki.routingsystem.model.enumerations.Role;
 import mk.ukim.finki.routingsystem.repository.EmployeeRepository;
-import mk.ukim.finki.routingsystem.security.EmployeePrincipal;
 import mk.ukim.finki.routingsystem.security.JwtUtil;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +26,7 @@ public class AuthenticationRestController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto, @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto) {
 
         Employee employee;
 

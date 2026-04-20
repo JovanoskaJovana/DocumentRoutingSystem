@@ -12,9 +12,11 @@ import mk.ukim.finki.routingsystem.repository.DocumentDownloadRepository;
 import mk.ukim.finki.routingsystem.repository.DocumentRepository;
 import mk.ukim.finki.routingsystem.repository.DocumentVersionRepository;
 import mk.ukim.finki.routingsystem.repository.EmployeeRepository;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 
@@ -34,7 +36,8 @@ public class DocumentDownloadListener {
         this.documentDownloadRepository = documentDownloadRepository;
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
     public void on(DocumentDownloadRequestedEvent event) {
 
         Document document = documentRepository.findById(event.documentId())

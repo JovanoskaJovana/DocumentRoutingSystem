@@ -5,6 +5,13 @@ import lombok.Data;
 
 @Entity
 @Data
+@Table (
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "department_key_constraint",
+                        columnNames = {"company_id", "department_key"})
+        }
+)
 public class Department {
 
     @Id
@@ -14,9 +21,10 @@ public class Department {
     private String name;
 
     @ManyToOne
+    @JoinColumn(name = "company_id")
     private Company company;
 
-    @Column(unique = true)
+    @Column(name = "department_key")
     private String departmentKey;
 
     public Department() {

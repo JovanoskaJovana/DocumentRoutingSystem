@@ -31,7 +31,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
      Optional<Document> findWithVersionsByIdAndCompany_Id(Long id, Long companyId);
      // findWithVersionsById fixes overriding findById
 
-     Optional<Document> findByIdAndAndCompany_Id(Long id, Long companyId);
+     Optional<Document> findByIdAndCompany_Id(Long id, Long companyId);
 
 }
  

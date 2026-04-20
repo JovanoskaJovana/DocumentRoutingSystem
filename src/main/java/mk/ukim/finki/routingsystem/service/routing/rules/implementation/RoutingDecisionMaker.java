@@ -14,6 +14,10 @@ public class RoutingDecisionMaker {
 
     public RoutingDecision decide (Map<String, Double> scores) {
 
+        scores.forEach((dept, score) ->
+                System.out.println("Dept: " + dept + " | Score: " + score)
+        );
+
         double topScore = Collections.max(scores.values());
 
         if (topScore < MIN_THRESHOLD) {

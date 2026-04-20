@@ -7,7 +7,6 @@ import org.mapstruct.*;
 @Mapper (componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface EmployeeMapper {
 
-    // employeeDto for responses (never expose the password)
 
     @Mapping(target = "employeeId", source = "id")
     @Mapping(target = "departmentId", source = "department.id")
@@ -16,7 +15,6 @@ public interface EmployeeMapper {
     @Mapping(target = "companyId", source = "company.id")
     CreateDisplayEmployeeDto toDto(Employee employee);
 
-    // create a new Employee from employeeDto
 
     @Mapping(target = "id",          ignore = true)
     @Mapping(target = "type",        source = "employeeType")
@@ -25,8 +23,6 @@ public interface EmployeeMapper {
     @Mapping(target = "company.id", source = "companyId")
     Employee toNewEntity(CreateDisplayEmployeeDto createDisplayEmployeeDto);
 
-
-    // update Employee entity from employeeDto (in-place)
 
     @BeanMapping(ignoreByDefault = true)
     @Mappings({

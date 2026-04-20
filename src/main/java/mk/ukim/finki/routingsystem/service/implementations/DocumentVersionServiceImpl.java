@@ -54,7 +54,7 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
         Employee employee = employeeRepository.findByIdAndCompany_Id(createDocumentVersionDto.editedByEmployee(), companyId)
                 .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(createDocumentVersionDto.documentId(), companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(createDocumentVersionDto.documentId(), companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
 
         DocumentVersion documentVersion = new DocumentVersion();
@@ -75,7 +75,7 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
     @Transactional
     public DisplayDocumentVersionDto updateAndSaveDocumentVersion(Long documentId, UpdateDocumentAndVersionDto updateDto, Long companyId){
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(documentId, companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
 
         DocumentVersion currentVersion = document.getCurrentDocumentVersion();
@@ -140,6 +140,7 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
     }
 
     @Override
+    @Transactional
     public DisplayDocumentVersionDto getDocumentVersion(Long documentVersionId, Long companyId) {
         return documentVersionRepository.findByIdAndDocument_Company_Id(documentVersionId, companyId)
                 .map(documentVersionMapper::toDto)

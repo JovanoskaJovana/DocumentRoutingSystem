@@ -64,6 +64,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee employee = employeeMapper.toNewEntity(createDisplayEmployeeDto);
         employee.setDepartment(department.get());
+        employee.setCompany(department.get().getCompany());
 
         if (createDisplayEmployeeDto.password() != null && !createDisplayEmployeeDto.password().isBlank()) {
             employee.setPasswordHash(passwordEncoder.encode(createDisplayEmployeeDto.password()));

@@ -11,9 +11,6 @@ import java.util.Optional;
 @Repository
 public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
-
-    Department findByDepartmentKey(String departmentKey);
-
     List<Department> findAllByDepartmentKeyInAndCompany_Id(List<String> departmentKey, Long companyId);
 
     List<Department> findAllByCompany_Id(Long companyId);

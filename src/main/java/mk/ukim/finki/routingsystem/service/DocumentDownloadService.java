@@ -10,8 +10,7 @@ import java.util.List;
 public interface DocumentDownloadService {
 
     List<DisplayDocumentDownloadDto> findAllDownloadsByEmployee(Long employeeId, Long companyId);
-    List<DisplayDocumentDownloadDto> findAllDownloadsByDocument(Long documentId, Long companyId);
 
-    DisplayDocumentDownloadDto saveAndCreate(CreateDocumentDownloadDto createDocumentDownloadDto, Long companyId);
+    List<DisplayDocumentDownloadDto> findAllDownloadsByDocument(Long documentId, Long companyId);
 
 }

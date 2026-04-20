@@ -55,7 +55,7 @@ public class DocumentActionServiceImpl implements DocumentActionService {
         Employee employee = employeeRepository.findByIdAndCompany_Id(createDocumentActionDto.performedByEmployeeId(), companyId)
                 .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(createDocumentActionDto.documentId(), companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(createDocumentActionDto.documentId(), companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
 
         DocumentAction documentAction = new DocumentAction();

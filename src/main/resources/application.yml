@@ -1,7 +1,7 @@
 app:
   routing:
     tenants:
-      PTR:
+      JFS:
         admin-dept-key: ADMIN
         departments:
           FN:
@@ -45,7 +45,7 @@ app:
                     "firewall", "network", "server", "database", "cloud",
                     "access issue", "system maintenance", "software update", "rollback" ]
 
-      company2:
+      ZPP:
         admin-dept-key: ADMIN
         departments:
           FINANCE:

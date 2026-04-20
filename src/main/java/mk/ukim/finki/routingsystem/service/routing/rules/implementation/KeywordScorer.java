@@ -148,12 +148,12 @@ public class KeywordScorer {
         return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 
-    private String normalize(String text) {
+    private static String normalize(String text) {
         if (text == null) return "";
         return text.toLowerCase().replaceAll("[^\\w\\s]", " ");
     }
 
-    private int countMatches(Pattern pattern, String text) {
+    private static int countMatches(Pattern pattern, String text) {
         int count = 0;
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {

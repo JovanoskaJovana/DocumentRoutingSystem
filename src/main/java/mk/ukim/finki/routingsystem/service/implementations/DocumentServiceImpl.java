@@ -164,7 +164,7 @@ public class DocumentServiceImpl implements DocumentService {
 
         String tenantKey = company.getCode();
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(documentId, companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
         if (document.getDocumentStatus() != DocumentStatus.UPLOADED) {
@@ -235,7 +235,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     public DisplayDocumentDto manualRouteDocument(Long documentId, Long employeeId, Long companyId, String departmentKey) {
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(documentId, companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
         DocumentVersion documentVersion = documentVersionRepository.findByIdAndDocument_Company_Id(document.getCurrentDocumentVersion().getId(), companyId)
@@ -288,7 +288,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public boolean approveDocument(Long documentId, Long employeeId, Long companyId) {
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(documentId, companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
         Employee employee = employeeRepository.findByIdAndCompany_Id(employeeId, companyId)
@@ -320,7 +320,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public boolean rejectDocument(Long documentId, Long employeeId, Long companyId) {
 
-        Document document = documentRepository.findByIdAndAndCompany_Id(documentId, companyId)
+        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
         Employee employee = employeeRepository.findByIdAndCompany_Id(employeeId, companyId)
