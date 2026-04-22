@@ -9,26 +9,30 @@ import mk.ukim.finki.routingsystem.service.routing.rules.implementation.RoutingD
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Configuration class for setting up the document routing beans.
+ */
+
 @Configuration
 public class RoutingConfig {
 
-    @Bean
-    public KeywordScorer keywordScorer(RoutingTenantProperties properties,
-                                       RoutingRulesMapper mapper) {
-        RoutingRules rules = mapper.toDomain(properties);
+  @Bean
+  public KeywordScorer keywordScorer(RoutingTenantProperties properties,
+                                     RoutingRulesMapper mapper) {
+    RoutingRules rules = mapper.toDomain(properties);
 
-        return new KeywordScorer(rules);
-    }
+    return new KeywordScorer(rules);
+  }
 
-    @Bean
-    public RoutingDecisionMaker routingDecisionMaker() {
-        return new RoutingDecisionMaker();
-    }
+  @Bean
+  public RoutingDecisionMaker routingDecisionMaker() {
+    return new RoutingDecisionMaker();
+  }
 
-    @Bean
-    public DocumentRouter documentRouter(KeywordScorer scorer,
-                                         RoutingDecisionMaker decisionMaker) {
-        return new DocumentRouterImpl(scorer, decisionMaker);
-    }
+  @Bean
+  public DocumentRouter documentRouter(KeywordScorer scorer,
+                                       RoutingDecisionMaker decisionMaker) {
+    return new DocumentRouterImpl(scorer, decisionMaker);
+  }
 
 }

@@ -6,15 +6,32 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
+
+/**
+ * Repository for managing {@link DocumentVersion} entities.
+ */
 
 @Repository
 public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, Long> {
 
-     // lists all versions of a document, ordered by the newest first
-     Page<DocumentVersion> findByDocument_IdAndDocument_Company_IdOrderByVersionNumberDesc(Long documentId, Long companyId, Pageable pageable);
+  /**
+   * Retrieves a paginated list of Versions for a given document within a company, ordered by version number descending.
+   *
+   * @param documentId the id of the given document
+   * @param companyId  the id of the given company
+   * @param pageable   pagination and sorting information
+   * @return a {@link Page} of {@link DocumentVersion} matching the given document and company
+   */
+  Page<DocumentVersion> findByDocument_IdAndDocument_Company_IdOrderByVersionNumberDesc(Long documentId, Long companyId, Pageable pageable);
 
-     Optional<DocumentVersion> findByIdAndDocument_Company_Id(Long documentId, Long companyId);
+  /**
+   * Returns a Version by a given id within a company.
+   *
+   * @param versionId the id of the given version
+   * @param companyId the id of the given company
+   * @return an {@link Optional} of {@link DocumentVersion} matching the given version id and company
+   */
+  Optional<DocumentVersion> findByIdAndDocument_Company_Id(Long versionId, Long companyId);
 
 }

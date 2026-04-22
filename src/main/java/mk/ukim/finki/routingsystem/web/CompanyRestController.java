@@ -10,38 +10,42 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * REST controller for managing companies.
+ */
+
 @RestController
 @RequestMapping("/api/companies")
 public class CompanyRestController {
 
-    private final CompanyService companyService;
+  private final CompanyService companyService;
 
-    public CompanyRestController(CompanyService companyService) {
-        this.companyService = companyService;
-    }
+  public CompanyRestController(CompanyService companyService) {
+    this.companyService = companyService;
+  }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ResponseCompanyDto> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(companyService.findCompanyById(id));
-    }
+  @GetMapping("/{id}")
+  public ResponseEntity<ResponseCompanyDto> findById(@PathVariable Long id) {
+    return ResponseEntity.ok(companyService.findCompanyById(id));
+  }
 
-    @GetMapping
-    public ResponseEntity<Page<ResponseCompanyDto>> findAll(Pageable pageable) {
-        Page<ResponseCompanyDto> responseCompanyDtos = companyService.listAll(pageable);
-        return ResponseEntity.ok(responseCompanyDtos);
-    }
+  @GetMapping
+  public ResponseEntity<Page<ResponseCompanyDto>> findAll(Pageable pageable) {
+    Page<ResponseCompanyDto> responseCompanyDtos = companyService.listAll(pageable);
+    return ResponseEntity.ok(responseCompanyDtos);
+  }
 
-    @PreAuthorize("@companyAuth.canCreateCompany(authentication)")
-    @PostMapping
-    public ResponseEntity<ResponseCompanyDto> createCompany(@Validated @RequestBody CreateCompanyDto companyDto) {
-        ResponseCompanyDto responseCompanyDto = companyService.save(companyDto);
-        return ResponseEntity.ok(responseCompanyDto);
-    }
+  @PreAuthorize("@companyAuth.canCreateCompany(authentication)")
+  @PostMapping
+  public ResponseEntity<ResponseCompanyDto> createCompany(@Validated @RequestBody CreateCompanyDto companyDto) {
+    ResponseCompanyDto responseCompanyDto = companyService.save(companyDto);
+    return ResponseEntity.ok(responseCompanyDto);
+  }
 
-    @PreAuthorize("@companyAuth.canChangeActivity(authentication)")
-    @PutMapping("/{id}/activity")
-    public ResponseEntity<ResponseCompanyDto> changeActivity(@PathVariable Long id) {
-        ResponseCompanyDto responseCompanyDto = companyService.changeActivity(id);
-        return ResponseEntity.ok(responseCompanyDto);
-    }
+  @PreAuthorize("@companyAuth.canChangeActivity(authentication)")
+  @PutMapping("/{id}/activity")
+  public ResponseEntity<ResponseCompanyDto> changeActivity(@PathVariable Long id) {
+    ResponseCompanyDto responseCompanyDto = companyService.changeActivity(id);
+    return ResponseEntity.ok(responseCompanyDto);
+  }
 }

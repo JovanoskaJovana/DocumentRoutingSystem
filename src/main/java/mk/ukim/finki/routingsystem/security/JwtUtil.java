@@ -14,67 +14,89 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Utility component for generating and parsing JWT tokens.
+ */
 
 @Component
 public class JwtUtil {
 
-    private final JwtProperties props;
-    private final Key key;
+  private final JwtProperties props;
+  private final Key key;
 
-    public JwtUtil(JwtProperties props) {
-        this.props = props;
-        byte[] keyBytes = Decoders.BASE64.decode(props.getSecret());
-        this.key = Keys.hmacShaKeyFor(keyBytes);
-    }
+  public JwtUtil(JwtProperties props) {
+    this.props = props;
+    byte[] keyBytes = Decoders.BASE64.decode(props.getSecret());
+    this.key = Keys.hmacShaKeyFor(keyBytes);
+  }
 
-    private Key key() {
-        return this.key;
-    }
+  private Key key() {
+    return this.key;
+  }
 
-    public String generateToken(Long employeeId, String fullName, Role role, EmployeeType employeeType, Long departmentId, Long company) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("firstName", fullName);
-        claims.put("role", role.name());
-        claims.put("employeeType", employeeType != null ? employeeType.name() : null);
-        claims.put("departmentId", departmentId);
-        claims.put("companyId", company);
+  /**
+   * Generates a signed JWT token containing employee claims.
+   *
+   * @param employeeId   the id of the employee
+   * @param fullName     the full name of the employee
+   * @param role         the role of the employee
+   * @param employeeType the type of the employee
+   * @param departmentId the id of the department the employee belongs to
+   * @param company      the id of the company the employee belongs to
+   * @return a signed JWT token string
+   */
+  public String generateToken(Long employeeId, String fullName, Role role, EmployeeType employeeType, Long departmentId, Long company) {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("firstName", fullName);
+    claims.put("role", role.name());
+    claims.put("employeeType", employeeType != null ? employeeType.name() : null);
+    claims.put("departmentId", departmentId);
+    claims.put("companyId", company);
 
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(employeeId.toString())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + props.getExpiration()))
-                .signWith(key(), SignatureAlgorithm.HS256)
-                .compact();
-    }
+    return Jwts.builder()
+            .setClaims(claims)
+            .setSubject(employeeId.toString())
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + props.getExpiration()))
+            .signWith(key(), SignatureAlgorithm.HS256)
+            .compact();
+  }
 
-    public Claims verifyToken(String token) {
-        return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
-    }
+  /**
+   * Verifies and parses the claims from a JWT token.
+   *
+   * @param token the JWT token string
+   * @return the {@link Claims} extracted from the token
+   * @throws io.jsonwebtoken.JwtException if the token is invalid or expired
+   */
+  public Claims verifyToken(String token) {
+    return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
+  }
 
-    public Long employeeIdFromToken(String token) {
-        return Long.valueOf(verifyToken(token).getSubject());
-    }
+  public Long employeeIdFromToken(String token) {
+    return Long.valueOf(verifyToken(token).getSubject());
+  }
 
-    public String nameFromToken(String token) {
-        return verifyToken(token).get("firstName", String.class);
-    }
+  public String nameFromToken(String token) {
+    return verifyToken(token).get("firstName", String.class);
+  }
 
-    public Role roleFromToken(String token) {
-        return Role.valueOf(verifyToken(token).get("role", String.class));
-    }
+  public Role roleFromToken(String token) {
+    return Role.valueOf(verifyToken(token).get("role", String.class));
+  }
 
-    public EmployeeType employeeTypeFromToken(String token) {
-        return EmployeeType.valueOf(verifyToken(token).get("employeeType", String.class));
-    }
-    public Long departmentIdFromToken(String token) {
-        Object dept = verifyToken(token).get("departmentId");
-        return dept == null ? null : Long.valueOf(dept.toString());
-    }
-    public Long companyFromToken(String token) {
-        Object company = verifyToken(token).get("companyId");
-        return company == null ? null : Long.valueOf(company.toString());
-    }
+  public EmployeeType employeeTypeFromToken(String token) {
+    return EmployeeType.valueOf(verifyToken(token).get("employeeType", String.class));
+  }
 
+  public Long departmentIdFromToken(String token) {
+    Object dept = verifyToken(token).get("departmentId");
+    return dept == null ? null : Long.valueOf(dept.toString());
+  }
+
+  public Long companyFromToken(String token) {
+    Object company = verifyToken(token).get("companyId");
+    return company == null ? null : Long.valueOf(company.toString());
+  }
 
 }

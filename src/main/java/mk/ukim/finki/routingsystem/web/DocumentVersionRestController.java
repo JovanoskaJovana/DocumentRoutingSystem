@@ -13,52 +13,56 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
+/**
+ * REST controller for managing document versions.
+ */
+
 @RestController
 @RequestMapping("/api/documents")
 public class DocumentVersionRestController {
 
-    private final DocumentVersionService documentVersionService;
+  private final DocumentVersionService documentVersionService;
 
-    public DocumentVersionRestController(DocumentVersionService documentVersionService) {
-        this.documentVersionService = documentVersionService;
-    }
-
-
-    @GetMapping("{documentId}/allVersions")
-    public ResponseEntity<Page<DisplayDocumentVersionDto>> getAllVersions(@PathVariable Long documentId,
-                                                                   @AuthenticationPrincipal EmployeePrincipal employeePrincipal,
-                                                                   Pageable pageable) {
-
-        Page<DisplayDocumentVersionDto> displayDocumentVersionDto = documentVersionService.listAllVersionsOfADocument(documentId, employeePrincipal.getCompanyId(), pageable);
-
-        return ResponseEntity.ok(displayDocumentVersionDto);
-    }
-
-    @PutMapping(value = "{documentId}/editDocument", consumes = {"multipart/form-data"})
-    public ResponseEntity<DisplayDocumentVersionDto> updateDocumentAndVersion(@PathVariable Long documentId,
-                                                                              @RequestParam (required = false) MultipartFile file,
-                                                                              @RequestParam String title,
-                                                                              @RequestParam String changeNote,
-                                                                              @AuthenticationPrincipal EmployeePrincipal employeePrincipal) throws IOException {
-
-        byte [] fileData = (file != null && !file.isEmpty()) ? file.getBytes() : null;
+  public DocumentVersionRestController(DocumentVersionService documentVersionService) {
+    this.documentVersionService = documentVersionService;
+  }
 
 
-        UpdateDocumentAndVersionDto updateDocumentAndVersionDto = new UpdateDocumentAndVersionDto(
-                title != null ? title.trim() : null,
-                employeePrincipal.getEmployeeId(),
-                changeNote != null ? changeNote.trim() : null,
-                fileData
-        );
+  @GetMapping("{documentId}/allVersions")
+  public ResponseEntity<Page<DisplayDocumentVersionDto>> getAllVersions(@PathVariable Long documentId,
+                                                                        @AuthenticationPrincipal EmployeePrincipal employeePrincipal,
+                                                                        Pageable pageable) {
 
-        DisplayDocumentVersionDto documentVersionDto = documentVersionService.updateAndSaveDocumentVersion(documentId, updateDocumentAndVersionDto, employeePrincipal.getCompanyId());
+    Page<DisplayDocumentVersionDto> displayDocumentVersionDto = documentVersionService.listAllVersionsOfADocument(documentId, employeePrincipal.companyId(), pageable);
 
-        return ResponseEntity.ok(documentVersionDto);
-    }
+    return ResponseEntity.ok(displayDocumentVersionDto);
+  }
 
-    @GetMapping("version/{versionId}")
-    public ResponseEntity<DisplayDocumentVersionDto> getDocumentVersion(@PathVariable Long versionId,
-                                                                        @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
-        return ResponseEntity.ok(documentVersionService.getDocumentVersion(versionId, employeePrincipal.getCompanyId()));
-    }
+  @PutMapping(value = "{documentId}/editDocument", consumes = {"multipart/form-data"})
+  public ResponseEntity<DisplayDocumentVersionDto> updateDocumentAndVersion(@PathVariable Long documentId,
+                                                                            @RequestParam(required = false) MultipartFile file,
+                                                                            @RequestParam String title,
+                                                                            @RequestParam String changeNote,
+                                                                            @AuthenticationPrincipal EmployeePrincipal employeePrincipal) throws IOException {
+
+    byte[] fileData = (file != null && !file.isEmpty()) ? file.getBytes() : null;
+
+
+    UpdateDocumentAndVersionDto updateDocumentAndVersionDto = new UpdateDocumentAndVersionDto(
+            title != null ? title.trim() : null,
+            employeePrincipal.employeeId(),
+            changeNote != null ? changeNote.trim() : null,
+            fileData
+    );
+
+    DisplayDocumentVersionDto documentVersionDto = documentVersionService.updateAndSaveDocumentVersion(documentId, updateDocumentAndVersionDto, employeePrincipal.companyId());
+
+    return ResponseEntity.ok(documentVersionDto);
+  }
+
+  @GetMapping("version/{versionId}")
+  public ResponseEntity<DisplayDocumentVersionDto> getDocumentVersion(@PathVariable Long versionId,
+                                                                      @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+    return ResponseEntity.ok(documentVersionService.getDocumentVersion(versionId, employeePrincipal.companyId()));
+  }
 }

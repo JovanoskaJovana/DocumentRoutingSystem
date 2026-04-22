@@ -7,159 +7,209 @@ import mk.ukim.finki.routingsystem.model.dto.Routing.CompiledRules;
 import mk.ukim.finki.routingsystem.model.dto.Routing.TitleAndBody;
 import mk.ukim.finki.routingsystem.model.exceptions.RoutingRulesForTenantNotFound;
 
-
 import java.util.*;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Scores documents against department routing rules using weighted keyword matching.
+ * On initialization, routing rules are precompiled into regex patterns and cached per tenant
+ * for efficient reuse. Each keyword is classified as strong, weak, or negative and
+ * matches in the title are weighted more heavily than matches in the body.
+ */
+
 public class KeywordScorer {
 
-    private static final double TITLE_WEIGHT    = 3.0;
-    private static final double BODY_WEIGHT     = 1.0;
-    private static final double STRONG_WEIGHT   = 1.0;
-    private static final double WEAK_WEIGHT     = 0.4;
-    private static final double NEGATIVE_WEIGHT = -2.0;
-    private static final int    MAX_FREQ        = 5;
+  private static final double TITLE_WEIGHT = 3.0;
+  private static final double BODY_WEIGHT = 1.0;
+  private static final double STRONG_WEIGHT = 1.0;
+  private static final double WEAK_WEIGHT = 0.4;
+  private static final double NEGATIVE_WEIGHT = -2.0;
+  private static final int MAX_FREQ = 5;
 
-    private final Map<String, Map<String, CompiledRules>> cachedRules;
+  private final Map<String, Map<String, CompiledRules>> cachedRules;
 
-    public KeywordScorer(RoutingRules rules) {
-        this.cachedRules = buildCache(rules);
+  public KeywordScorer(RoutingRules rules) {
+    this.cachedRules = buildCache(rules);
+  }
+
+  /**
+   * Computes a keyword-based score for each department for a given document and tenant.
+   * Each keyword match contributes to the score based on its type and location.
+   *
+   * @param tenantCode the code identifying the tenant whose routing rules are used
+   * @param document   the extracted title and body of the document to score
+   * @return a map of department keys to their computed scores
+   * @throws mk.ukim.finki.routingsystem.model.exceptions.RoutingRulesForTenantNotFound if no routing rules are found for the given tenant
+   */
+  public Map<String, Double> score(String tenantCode, TitleAndBody document) {
+
+    Map<String, CompiledRules> deptRules = cachedRules.get(tenantCode);
+
+    if (deptRules == null) {
+      throw new RoutingRulesForTenantNotFound("No routing rules found for tenant: " + tenantCode);
     }
 
-    public Map<String, Double> score (String tenantCode, TitleAndBody document) {
+    String title = normalize(document.title());
+    String body = normalize(document.body());
 
-        Map<String, CompiledRules> deptRules = cachedRules.get(tenantCode);
+    Map<String, Double> scores = new LinkedHashMap<>();
 
-        if (deptRules == null) {
-            throw new RoutingRulesForTenantNotFound("No routing rules found for tenant: " + tenantCode);
-        }
+    for (Map.Entry<String, CompiledRules> entry : deptRules.entrySet()) {
 
-        String title = normalize(document.title());
-        String body = normalize(document.body());
+      String deptName = entry.getKey();
+      CompiledRules deptRule = entry.getValue();
 
-        Map<String, Double> scores = new LinkedHashMap<>();
+      double score = 0.0;
 
-        for (Map.Entry<String, CompiledRules> entry : deptRules.entrySet()) {
+      for (Pattern pattern : deptRule.strong()) {
 
-            String deptName = entry.getKey();
-            CompiledRules deptRule = entry.getValue();
+        int titleCount = countMatches(pattern, title);
+        int bodyCount = countMatches(pattern, body);
 
-            double score = 0.0;
+        score += titleCount * TITLE_WEIGHT * STRONG_WEIGHT;
+        score += bodyCount * BODY_WEIGHT * STRONG_WEIGHT;
+      }
 
-            for (Pattern pattern : deptRule.strong()) {
+      for (Pattern pattern : deptRule.weak()) {
 
-                int titleCount = countMatches(pattern, title);
-                int bodyCount  = countMatches(pattern, body);
+        int titleCount = countMatches(pattern, title);
+        int bodyCount = countMatches(pattern, body);
 
-                score += titleCount * TITLE_WEIGHT * STRONG_WEIGHT;
-                score += bodyCount  * BODY_WEIGHT  * STRONG_WEIGHT;
-            }
+        score += titleCount * TITLE_WEIGHT * WEAK_WEIGHT;
+        score += bodyCount * BODY_WEIGHT * WEAK_WEIGHT;
+      }
 
-            for (Pattern pattern : deptRule.weak()) {
+      for (Pattern pattern : deptRule.negative()) {
 
-                int titleCount = countMatches(pattern, title);
-                int bodyCount  = countMatches(pattern, body);
+        int titleCount = countMatches(pattern, title);
+        int bodyCount = countMatches(pattern, body);
 
-                score += titleCount * TITLE_WEIGHT * WEAK_WEIGHT;
-                score += bodyCount  * BODY_WEIGHT  * WEAK_WEIGHT;
-            }
+        score += titleCount * TITLE_WEIGHT * NEGATIVE_WEIGHT;
+        score += bodyCount * BODY_WEIGHT * NEGATIVE_WEIGHT;
+      }
 
-            for (Pattern pattern : deptRule.negative()) {
+      scores.put(deptName, score);
+    }
+    return scores;
+  }
 
-                int titleCount = countMatches(pattern, title);
-                int bodyCount  = countMatches(pattern, body);
+  /**
+   * Precompiles routing rules for all tenants and departments into regex patterns
+   * and stores them in a cache for efficient lookup during scoring.
+   *
+   * @param rules the full set of routing rules
+   * @return a nested map of tenant code to department key to compiled rules
+   */
+  private static Map<String, Map<String, CompiledRules>> buildCache(RoutingRules rules) {
 
-                score += titleCount * TITLE_WEIGHT * NEGATIVE_WEIGHT;
-                score += bodyCount  * BODY_WEIGHT  * NEGATIVE_WEIGHT;
-            }
+    Map<String, Map<String, CompiledRules>> cache = new HashMap<>();
 
-            scores.put(deptName, score);
-        }
-        return scores;
+    Map<String, TenantRules> tenants = rules.getTenants();
+
+    if (tenants == null || tenants.isEmpty()) {
+      return cache;
     }
 
+    for (Map.Entry<String, TenantRules> tenantEntry : tenants.entrySet()) {
 
-    private static Map<String, Map<String, CompiledRules>> buildCache (RoutingRules rules) {
+      String tenantId = tenantEntry.getKey();
+      TenantRules tenantRules = tenantEntry.getValue();
 
-        Map<String, Map<String, CompiledRules>> cache = new HashMap<>();
+      Map<String, CompiledRules> perDepartment = new HashMap<>();
 
-        Map<String, TenantRules> tenants = rules.getTenants();
+      Map<String, DepartmentRules> departments = tenantRules.getDepartments();
 
-        if (tenants == null || tenants.isEmpty()) {
-            return cache;
-        }
+      for (Map.Entry<String, DepartmentRules> departmentEntry : departments.entrySet()) {
 
-        for (Map.Entry<String, TenantRules> tenantEntry: tenants.entrySet()) {
+        String departmentId = departmentEntry.getKey();
+        DepartmentRules departmentRules = departmentEntry.getValue();
 
-            String tenantID = tenantEntry.getKey();
-            TenantRules tenantRules = tenantEntry.getValue();
+        CompiledRules compiledRules = new CompiledRules(
+                compileKeywords(departmentRules.getStrong()),
+                compileKeywords(departmentRules.getWeak()),
+                compileKeywords(departmentRules.getNegative())
+        );
+        perDepartment.put(departmentId, compiledRules);
 
-            Map<String, CompiledRules> perDepartment = new HashMap<>();
+      }
+      cache.put(tenantId, perDepartment);
+    }
+    return cache;
+  }
 
-            Map<String, DepartmentRules> departments = tenantRules.getDepartments();
+  /**
+   * Compiles a list of keyword strings into regex {@link Pattern} objects.
+   *
+   * @param keywords the list of keywords to compile
+   * @return a list of compiled patterns, or an empty list if the input is null or empty
+   */
+  private static List<Pattern> compileKeywords(List<String> keywords) {
 
-            for (Map.Entry<String, DepartmentRules> departmentEntry: departments.entrySet()) {
-
-                String departmentID = departmentEntry.getKey();
-                DepartmentRules departmentRules = departmentEntry.getValue();
-
-                CompiledRules compiledRules = new CompiledRules(
-                        compileKeywords(departmentRules.getStrong()),
-                        compileKeywords(departmentRules.getWeak()),
-                        compileKeywords(departmentRules.getNegative())
-                );
-                perDepartment.put(departmentID, compiledRules);
-
-            }
-            cache.put(tenantID, perDepartment);
-        }
-        return cache;
+    if (keywords == null || keywords.isEmpty()) {
+      return List.of();
     }
 
-    private static List<Pattern> compileKeywords(List<String> keywords) {
+    return keywords.stream()
+            .filter(Objects::nonNull)
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .map(KeywordScorer::toPattern)
+            .toList();
+  }
 
-        if (keywords == null || keywords.isEmpty()) return List.of();
+  /**
+   * Converts a keyword string into a word-boundary regex pattern.
+   * Phrase keywords are joined with a flexible separator matching spaces, hyphens or slashes.
+   *
+   * @param keyword the keyword to convert
+   * @return a case-insensitive {@link Pattern} matching the keyword
+   */
+  private static Pattern toPattern(String keyword) {
 
-        return keywords.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .map(KeywordScorer::toPattern)
-                .toList();
+    boolean isPhrase = keyword.contains(" ");
+    String regex;
+
+    if (isPhrase) {
+      String[] parts = keyword.split("\\s+");
+      String separator = "(?:\\s|[-/])+";
+      String joined = String.join(separator, Arrays.stream(parts).map(Pattern::quote).toList());
+      regex = "\\b" + joined + "\\b";
+    } else {
+      regex = "\\b" + Pattern.quote(keyword) + "\\b";
     }
 
+    return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+  }
 
-    private static Pattern toPattern(String keyword) {
-
-        boolean isPhrase = keyword.contains(" ");
-        String regex;
-
-        if (isPhrase) {
-            String []parts = keyword.split("\\s+");
-            String separator = "(?:\\s|[-/])+";
-            String joined = String.join(separator, Arrays.stream(parts).map(Pattern::quote).toList());
-             regex = "\\b" + joined + "\\b";
-        } else {
-             regex = "\\b" + Pattern.quote(keyword) + "\\b";
-        }
-
-        return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+  /**
+   * Normalizes text by converting to lowercase and replacing non-word characters with spaces.
+   *
+   * @param text the text to normalize
+   * @return the normalized text or an empty string if the input is null
+   */
+  private static String normalize(String text) {
+    if (text == null) {
+      return "";
     }
 
-    private static String normalize(String text) {
-        if (text == null) return "";
-        return text.toLowerCase().replaceAll("[^\\w\\s]", " ");
-    }
+    return text.toLowerCase().replaceAll("[^\\w\\s]", " ");
+  }
 
-    private static int countMatches(Pattern pattern, String text) {
-        int count = 0;
-        Matcher matcher = pattern.matcher(text);
-        while (matcher.find()) {
-            count++;
-        }
-        return Math.min(count, MAX_FREQ);
+  /**
+   * Counts the number of times a pattern matches in the given text, capped at {@value MAX_FREQ}.
+   *
+   * @param pattern the pattern to match
+   * @param text    the text to search in
+   * @return the number of matches, capped at {@value MAX_FREQ}
+   */
+  private static int countMatches(Pattern pattern, String text) {
+    int count = 0;
+    Matcher matcher = pattern.matcher(text);
+    while (matcher.find()) {
+      count++;
     }
+    return Math.min(count, MAX_FREQ);
+  }
 
 }

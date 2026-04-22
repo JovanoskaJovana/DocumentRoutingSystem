@@ -34,319 +34,322 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Implementation of {@link DocumentService}
+ */
+
 @Service
 public class DocumentServiceImpl implements DocumentService {
 
-    public final DocumentRepository documentRepository;
-    private final DocumentMapper documentMapper;
-    private final EmployeeRepository employeeRepository;
-    private final DocumentVersionService documentVersionService;
-    private final DocumentRouter documentRouter;
-    private final CompanyRepository companyRepository;
+  public final DocumentRepository documentRepository;
+  private final DocumentMapper documentMapper;
+  private final EmployeeRepository employeeRepository;
+  private final DocumentVersionService documentVersionService;
+  private final DocumentRouter documentRouter;
+  private final CompanyRepository companyRepository;
 
-    private final DocumentTextExtractor documentTextExtractor;
-    private final DepartmentRepository departmentRepository;
-    private final ApplicationEventPublisher applicationEventPublisher;
-    private final DocumentVersionRepository documentVersionRepository;
-    private final ManualReviewActionRepository manualReviewActionRepository;
+  private final DocumentTextExtractor documentTextExtractor;
+  private final DepartmentRepository departmentRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
+  private final DocumentVersionRepository documentVersionRepository;
+  private final ManualReviewActionRepository manualReviewActionRepository;
 
-    public DocumentServiceImpl(DocumentRepository documentRepository, DocumentMapper documentMapper, EmployeeRepository employeeRepository, DocumentVersionService documentVersionService, DocumentRouter documentRouter, CompanyRepository companyRepository, DocumentTextExtractor documentTextExtractor, DepartmentRepository departmentRepository, ApplicationEventPublisher applicationEventPublisher, DocumentVersionRepository documentVersionRepository, ManualReviewActionRepository manualReviewActionRepository) {
-        this.documentRepository = documentRepository;
-        this.documentMapper = documentMapper;
-        this.employeeRepository = employeeRepository;
-        this.documentVersionService = documentVersionService;
-        this.documentRouter = documentRouter;
-        this.companyRepository = companyRepository;
-        this.documentTextExtractor = documentTextExtractor;
-        this.departmentRepository = departmentRepository;
-        this.applicationEventPublisher = applicationEventPublisher;
-        this.documentVersionRepository = documentVersionRepository;
-        this.manualReviewActionRepository = manualReviewActionRepository;
+  public DocumentServiceImpl(DocumentRepository documentRepository, DocumentMapper documentMapper, EmployeeRepository employeeRepository, DocumentVersionService documentVersionService, DocumentRouter documentRouter, CompanyRepository companyRepository, DocumentTextExtractor documentTextExtractor, DepartmentRepository departmentRepository, ApplicationEventPublisher applicationEventPublisher, DocumentVersionRepository documentVersionRepository, ManualReviewActionRepository manualReviewActionRepository) {
+    this.documentRepository = documentRepository;
+    this.documentMapper = documentMapper;
+    this.employeeRepository = employeeRepository;
+    this.documentVersionService = documentVersionService;
+    this.documentRouter = documentRouter;
+    this.companyRepository = companyRepository;
+    this.documentTextExtractor = documentTextExtractor;
+    this.departmentRepository = departmentRepository;
+    this.applicationEventPublisher = applicationEventPublisher;
+    this.documentVersionRepository = documentVersionRepository;
+    this.manualReviewActionRepository = manualReviewActionRepository;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<DisplayDocumentDto> findAllByRoutedToDepartment(Long departmentId, Long companyId, Pageable pageable) {
+    return documentRepository.findAllByRoutedToDepartment_IdAndCompany_IdOrderByUploadDateTime(departmentId, companyId, pageable)
+            .map(documentMapper::toDto);
+  }
+
+  @Override
+  @Transactional
+  public Page<DisplayAdminDocumentDto> findAllByRoutedToDepartmentByAdmin(Long departmentId, Long companyId, Pageable pageable) {
+    return documentRepository.findAllByRoutedToDepartment_IdAndCompany_IdOrderByUploadDateTime(departmentId, companyId, pageable)
+            .map(documentMapper::toAdminDto);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<DisplayDocumentDto> findAllByRoutedToEmployee(List<DocumentStatus> documentStatuses, Long employeeId, Long companyId, Pageable pageable) {
+    return documentRepository.findAllByDocumentStatusInAndRoutedToEmployees_IdAndCompany_IdOrderByUploadDateTime(documentStatuses, employeeId, companyId, pageable)
+            .map(documentMapper::toDto);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<DisplayDocumentDto> findAllUploadedByEmployee(List<DocumentStatus> documentStatuses, Long employeeId, Long companyId, Pageable pageable) {
+    return documentRepository.findAllByDocumentStatusInAndUploadedByEmployee_IdAndCompany_IdOrderByUploadDateTime(documentStatuses, employeeId, companyId, pageable)
+            .map(documentMapper::toDto);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public DisplayDocumentDto findAllWithVersions(Long documentId, Long companyId) {
+    return documentRepository.findWithVersionsByIdAndCompany_Id(documentId, companyId)
+            .map(documentMapper::toDto)
+            .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
+  }
+
+  @Override
+  @Transactional
+  public DisplayDocumentDto createDocumentAndDocumentVersion(CreateDocumentDto documentDto, MultipartFile file, Long uploaderId, Long companyId) throws IOException {
+
+    if (file == null || file.isEmpty()) {
+      throw new IOException("PDF file is required.");
     }
 
-    @Override
-    @Transactional (readOnly = true)
-    public Page<DisplayDocumentDto> findAllByRoutedToDepartment(Long departmentId, Long companyId, Pageable pageable) {
-        return documentRepository.findAllByRoutedToDepartment_IdAndCompany_IdOrderByUploadDateTime(departmentId, companyId, pageable)
-                .map(documentMapper::toDto);
+    if (uploaderId == null) {
+      throw new IOException("Authenticated employee id is missing.");
     }
 
-    @Override
-    @Transactional
-    public Page<DisplayAdminDocumentDto> findAllByRoutedToDepartmentByAdmin(Long departmentId, Long companyId, Pageable pageable) {
-        return documentRepository.findAllByRoutedToDepartment_IdAndCompany_IdOrderByUploadDateTime(departmentId, companyId, pageable)
-                .map(documentMapper::toAdminDto);
+    Employee employee = employeeRepository.findByIdAndCompany_Id(uploaderId, companyId)
+            .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
+
+    Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
+
+    Document document = new Document();
+    document.setCompany(company);
+    document.setDocumentStatus(DocumentStatus.UPLOADED);
+    document.setTitle(documentDto.title());
+    document.setUploadedByEmployee(employee);
+    document.setUploadDateTime(LocalDateTime.now());
+    documentRepository.save(document);
+
+    CreateDocumentVersionDto versionDto = new CreateDocumentVersionDto(
+            document.getId(),
+            1,
+            employee.getId(),
+            document.getTitle(),
+            "No made changes.",
+            LocalDateTime.now(),
+            file.getBytes()
+    );
+
+    DisplayDocumentVersionDto documentVersion = documentVersionService.createAndSaveADocumentVersion(versionDto, companyId);
+
+    document.setCurrentDocumentVersion(documentVersionRepository.getReferenceById(documentVersion.versionId()));
+    documentRepository.save(document);
+
+
+    applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
+            document.getId(),
+            document.getCurrentDocumentVersion().getId(),
+            employee.getId(),
+            ActionType.UPLOADED,
+            null,
+            DocumentStatus.UPLOADED,
+            LocalDateTime.now()
+    ));
+
+    return documentMapper.toDto(document);
+  }
+
+  @Override
+  @Transactional
+  public DisplayDocumentDto routeDocument(Long documentId, Long employeeId, Long companyId) {
+
+    Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new CompanyNotFoundException("Company not found"));
+
+    String tenantKey = company.getCode();
+
+    Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
+            .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
+
+    if (document.getDocumentStatus() != DocumentStatus.UPLOADED) {
+      throw new InvalidDocumentStateException("Only uploaded documents can be routed");
     }
 
-    @Override
-    @Transactional (readOnly = true)
-    public Page<DisplayDocumentDto> findAllByRoutedToEmployee(List<DocumentStatus> documentStatuses, Long employeeId, Long companyId, Pageable pageable) {
-        return documentRepository.findAllByDocumentStatusInAndRoutedToEmployees_IdAndCompany_IdOrderByUploadDateTime(documentStatuses, employeeId, companyId, pageable)
-                .map(documentMapper::toDto);
+    DocumentStatus fromStatus = document.getDocumentStatus();
+
+    DocumentVersion documentVersion = document.getCurrentDocumentVersion();
+    if (documentVersion == null || documentVersion.getId() == null) {
+      throw new DocumentVersionNotFoundException("No current version to route.");
     }
 
-    @Override
-    @Transactional (readOnly = true)
-    public Page<DisplayDocumentDto> findAllUploadedByEmployee(List<DocumentStatus> documentStatuses, Long employeeId, Long companyId, Pageable pageable) {
-        return documentRepository.findAllByDocumentStatusInAndUploadedByEmployee_IdAndCompany_IdOrderByUploadDateTime(documentStatuses, employeeId, companyId, pageable)
-                .map(documentMapper::toDto);
+    byte[] bytes = documentVersion.getFileData();
+    if (bytes == null || bytes.length == 0) {
+      throw new DocumentVersionNotFoundException("No file to route.");
     }
 
-    @Override
-    @Transactional (readOnly = true)
-    public DisplayDocumentDto findAllWithVersions(Long documentId, Long companyId) {
-        return documentRepository.findWithVersionsByIdAndCompany_Id(documentId, companyId)
-                .map(documentMapper::toDto)
-                .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
+    TitleAndBody textData = documentTextExtractor.extractTitleAndBody(documentVersion.getFileData());
+    RoutingDecision routingDecision = documentRouter.route(tenantKey, textData);
+
+    if (routingDecision.winner() != null) {
+
+      Department department = departmentRepository.findByDepartmentKeyAndCompany_Id(routingDecision.winner(), companyId)
+              .orElseThrow(() -> new DepartmentNotFoundException("Department not found."));
+
+      Set<Employee> signatories = employeeRepository.findAllByCompany_IdAndDepartment_IdAndType(companyId, department.getId(), EmployeeType.SIGNATORY);
+
+      document.setRoutedToEmployees(signatories);
+      document.setRoutedToDepartment(department);
+      document.setDocumentStatus(DocumentStatus.ROUTED);
+      documentRepository.save(document);
+
+      applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
+              document.getId(),
+              document.getCurrentDocumentVersion().getId(),
+              employeeId,
+              ActionType.ROUTED,
+              fromStatus,
+              DocumentStatus.ROUTED,
+              LocalDateTime.now()
+      ));
+
+    } else {
+
+      document.setRoutedToDepartment(null);
+      document.getRoutedToEmployees().clear();
+      document.setDocumentStatus(DocumentStatus.FAILED_ROUTING);
+      document.setSuggestedDepartments(routingDecision.tiedDepartments());
+      documentRepository.save(document);
+
+      applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
+              document.getId(),
+              documentVersion.getId(),
+              employeeId,
+              ActionType.FAILED_ROUTING,
+              fromStatus,
+              DocumentStatus.FAILED_ROUTING,
+              LocalDateTime.now()
+      ));
+
     }
 
-    @Override
-    @Transactional
-    public DisplayDocumentDto createDocumentAndDocumentVersion(CreateDocumentDto documentDto, MultipartFile file, Long uploaderId, Long companyId) throws IOException {
+    return documentMapper.toDto(document);
+  }
 
-        if (file == null || file.isEmpty()) {
-            throw new IOException("PDF file is required.");
-        }
+  @Transactional
+  @Override
+  public DisplayDocumentDto manualRouteDocument(Long documentId, Long employeeId, Long companyId, String departmentKey) {
 
-        if (uploaderId == null) {
-            throw new IOException("Authenticated employee id is missing.");
-        }
+    Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
+            .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
-        Employee employee = employeeRepository.findByIdAndCompany_Id(uploaderId, companyId)
-                .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
+    DocumentVersion documentVersion = documentVersionRepository.findByIdAndDocument_Company_Id(document.getCurrentDocumentVersion().getId(), companyId)
+            .orElseThrow(() -> new DocumentVersionNotFoundException("Document Version not found."));
 
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
+    Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
 
-        Document document = new Document();
-        document.setCompany(company);
-        document.setDocumentStatus(DocumentStatus.UPLOADED);
-        document.setTitle(documentDto.title());
-        document.setUploadedByEmployee(employee);
-        document.setUploadDateTime(LocalDateTime.now());
-        documentRepository.save(document);
+    TitleAndBody textData = documentTextExtractor.extractTitleAndBody(documentVersion.getFileData());
 
-        CreateDocumentVersionDto versionDto = new CreateDocumentVersionDto(
-                document.getId(),
-                1,
-                employee.getId(),
-                document.getTitle(),
-                "No made changes.",
-                LocalDateTime.now(),
-                file.getBytes()
-        );
-
-        DisplayDocumentVersionDto documentVersion = documentVersionService.createAndSaveADocumentVersion(versionDto, companyId);
-
-        document.setCurrentDocumentVersion(documentVersionRepository.getReferenceById(documentVersion.versionId()));
-        documentRepository.save(document);
-
-
-        applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-                document.getId(),
-                document.getCurrentDocumentVersion().getId(),
-                employee.getId(),
-                ActionType.UPLOADED,
-                null,
-                DocumentStatus.UPLOADED,
-                LocalDateTime.now()
-        ));
-
-        return documentMapper.toDto(document);
+    if (document.getDocumentStatus() != DocumentStatus.FAILED_ROUTING) {
+      throw new InvalidDocumentStateException("Only failed routing documents can be manually routed");
     }
 
-    @Override
-    @Transactional
-    public DisplayDocumentDto routeDocument(Long documentId, Long employeeId, Long companyId) {
+    DocumentStatus fromStatus = document.getDocumentStatus();
 
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new CompanyNotFoundException("Company not found"));
+    Department department = departmentRepository.findByDepartmentKeyAndCompany_Id(departmentKey, companyId)
+            .orElseThrow(() -> new DepartmentNotFoundException("Department not found"));
 
-        String tenantKey = company.getCode();
+    Set<Employee> signatories = employeeRepository.findAllByCompany_IdAndDepartment_IdAndType(companyId, department.getId(), EmployeeType.SIGNATORY);
 
-        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
-                .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
+    document.setRoutedToEmployees(signatories);
+    document.setRoutedToDepartment(department);
+    document.setSuggestedDepartments(null);
+    document.setDocumentStatus(DocumentStatus.ROUTED);
+    documentRepository.save(document);
 
-        if (document.getDocumentStatus() != DocumentStatus.UPLOADED) {
-            throw new InvalidDocumentStateException("Only uploaded documents can be routed");
-        }
+    ManualReviewAction manualReviewAction = new ManualReviewAction();
+    manualReviewAction.setDocumentTitle(textData.title());
+    manualReviewAction.setDocumentText(textData.body());
+    manualReviewAction.setManualChosenDepartment(department);
+    manualReviewAction.setTimestamp(LocalDateTime.now());
+    manualReviewAction.setCompany(company);
+    manualReviewActionRepository.save(manualReviewAction);
 
-        DocumentStatus fromStatus = document.getDocumentStatus();
+    applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
+            document.getId(),
+            document.getCurrentDocumentVersion().getId(),
+            employeeId,
+            ActionType.ROUTED,
+            fromStatus,
+            DocumentStatus.ROUTED,
+            LocalDateTime.now()
+    ));
 
-        DocumentVersion documentVersion = document.getCurrentDocumentVersion();
-        if (documentVersion == null || documentVersion.getId() == null) {
-            throw new DocumentVersionNotFoundException("No current version to route.");
-        }
+    return documentMapper.toDto(document);
+  }
 
-        byte[] bytes = documentVersion.getFileData();
-        if (bytes == null || bytes.length == 0) {
-            throw new DocumentVersionNotFoundException("No file to route.");
-        }
+  @Override
+  @Transactional
+  public boolean approveDocument(Long documentId, Long employeeId, Long companyId) {
 
-        TitleAndBody textData = documentTextExtractor.extractTitleAndBody(documentVersion.getFileData());
-        RoutingDecision routingDecision = documentRouter.route(tenantKey, textData);
+    Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
+            .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
-        if (routingDecision.winner() != null) {
+    Employee employee = employeeRepository.findByIdAndCompany_Id(employeeId, companyId)
+            .orElseThrow(() -> new EmployeeNotFoundException("Employee not found."));
 
-            Department department = departmentRepository.findByDepartmentKeyAndCompany_Id(routingDecision.winner(), companyId)
-                    .orElseThrow(() -> new DepartmentNotFoundException("Department not found."));
+    boolean isSignatory = employee.getType().equals(EmployeeType.SIGNATORY);
 
-            Set<Employee> signatories = employeeRepository.findAllByCompany_IdAndDepartment_IdAndType(companyId, department.getId(), EmployeeType.SIGNATORY);
+    if (document.getDocumentStatus() == DocumentStatus.ROUTED && isSignatory) {
+      DocumentStatus from = document.getDocumentStatus();
+      document.setDocumentStatus(DocumentStatus.APPROVED);
+      documentRepository.save(document);
 
-            document.setRoutedToEmployees(signatories);
-            document.setRoutedToDepartment(department);
-            document.setDocumentStatus(DocumentStatus.ROUTED);
-            documentRepository.save(document);
+      applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
+              document.getId(),
+              document.getCurrentDocumentVersion().getId(),
+              employee.getId(),
+              ActionType.APPROVED,
+              from,
+              DocumentStatus.APPROVED,
+              LocalDateTime.now()
+      ));
 
-            applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-                    document.getId(),
-                    document.getCurrentDocumentVersion().getId(),
-                    employeeId,
-                    ActionType.ROUTED,
-                    fromStatus,
-                    DocumentStatus.ROUTED,
-                    LocalDateTime.now()
-            ));
-
-        } else {
-
-            document.setRoutedToDepartment(null);
-            document.getRoutedToEmployees().clear();
-            document.setDocumentStatus(DocumentStatus.FAILED_ROUTING);
-            document.setSuggestedDepartments(routingDecision.tiedDepartments());
-            documentRepository.save(document);
-
-            applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-                    document.getId(),
-                    documentVersion.getId(),
-                    employeeId,
-                    ActionType.FAILED_ROUTING,
-                    fromStatus,
-                    DocumentStatus.FAILED_ROUTING,
-                    LocalDateTime.now()
-            ));
-
-        }
-
-        return documentMapper.toDto(document);
+      return true;
     }
+    return false;
+  }
 
-    @Transactional
-    @Override
-    public DisplayDocumentDto manualRouteDocument(Long documentId, Long employeeId, Long companyId, String departmentKey) {
+  @Override
+  @Transactional
+  public boolean rejectDocument(Long documentId, Long employeeId, Long companyId) {
 
-        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
-                .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
+    Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
+            .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
 
-        DocumentVersion documentVersion = documentVersionRepository.findByIdAndDocument_Company_Id(document.getCurrentDocumentVersion().getId(), companyId)
-                .orElseThrow(() -> new DocumentVersionNotFoundException("Document Version not found."));
+    Employee employee = employeeRepository.findByIdAndCompany_Id(employeeId, companyId)
+            .orElseThrow(() -> new EmployeeNotFoundException("Employee not found."));
 
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
+    boolean isSignatory = employee.getType().equals(EmployeeType.SIGNATORY);
 
-        TitleAndBody textData = documentTextExtractor.extractTitleAndBody(documentVersion.getFileData());
+    if (document.getDocumentStatus() == DocumentStatus.ROUTED && isSignatory) {
+      DocumentStatus from = document.getDocumentStatus();
+      document.setDocumentStatus(DocumentStatus.REJECTED);
+      documentRepository.save(document);
 
-        if (document.getDocumentStatus() != DocumentStatus.FAILED_ROUTING) {
-            throw new InvalidDocumentStateException("Only failed routing documents can be manually routed");
-        }
+      applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
+              document.getId(),
+              document.getCurrentDocumentVersion().getId(),
+              employee.getId(),
+              ActionType.REJECTED,
+              from,
+              DocumentStatus.REJECTED,
+              LocalDateTime.now()
+      ));
 
-        DocumentStatus fromStatus = document.getDocumentStatus();
-
-        Department department = departmentRepository.findByDepartmentKeyAndCompany_Id(departmentKey, companyId)
-                .orElseThrow(() -> new DepartmentNotFoundException("Department not found"));
-
-        Set<Employee> signatories = employeeRepository.findAllByCompany_IdAndDepartment_IdAndType(companyId, department.getId(), EmployeeType.SIGNATORY);
-
-        document.setRoutedToEmployees(signatories);
-        document.setRoutedToDepartment(department);
-        document.setSuggestedDepartments(null);
-        document.setDocumentStatus(DocumentStatus.ROUTED);
-        documentRepository.save(document);
-
-        ManualReviewAction manualReviewAction = new ManualReviewAction();
-        manualReviewAction.setDocumentTitle(textData.title());
-        manualReviewAction.setDocumentText(textData.body());
-        manualReviewAction.setManualChosenDepartment(department);
-        manualReviewAction.setTimestamp(LocalDateTime.now());
-        manualReviewAction.setCompany(company);
-        manualReviewActionRepository.save(manualReviewAction);
-
-        applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-                document.getId(),
-                document.getCurrentDocumentVersion().getId(),
-                employeeId,
-                ActionType.ROUTED,
-                fromStatus,
-                DocumentStatus.ROUTED,
-                LocalDateTime.now()
-        ));
-
-        return documentMapper.toDto(document);
+      return true;
     }
-
-    @Override
-    @Transactional
-    public boolean approveDocument(Long documentId, Long employeeId, Long companyId) {
-
-        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
-                .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
-
-        Employee employee = employeeRepository.findByIdAndCompany_Id(employeeId, companyId)
-                .orElseThrow(() -> new EmployeeNotFoundException("Employee not found."));
-
-        boolean isSignatory = employee.getType().equals(EmployeeType.SIGNATORY);
-
-        if (document.getDocumentStatus() == DocumentStatus.ROUTED && isSignatory) {
-            DocumentStatus from = document.getDocumentStatus();
-            document.setDocumentStatus(DocumentStatus.APPROVED);
-            documentRepository.save(document);
-
-            applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-                    document.getId(),
-                    document.getCurrentDocumentVersion().getId(),
-                    employee.getId(),
-                    ActionType.APPROVED,
-                    from,
-                    DocumentStatus.APPROVED,
-                    LocalDateTime.now()
-            ));
-
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    @Transactional
-    public boolean rejectDocument(Long documentId, Long employeeId, Long companyId) {
-
-        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
-                .orElseThrow(() -> new DocumentNotFoundException("Document not found."));
-
-        Employee employee = employeeRepository.findByIdAndCompany_Id(employeeId, companyId)
-                .orElseThrow(() -> new EmployeeNotFoundException("Employee not found."));
-
-        boolean isSignatory = employee.getType().equals(EmployeeType.SIGNATORY);
-
-        if (document.getDocumentStatus() == DocumentStatus.ROUTED && isSignatory) {
-            DocumentStatus from = document.getDocumentStatus();
-            document.setDocumentStatus(DocumentStatus.REJECTED);
-            documentRepository.save(document);
-
-            applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-                    document.getId(),
-                    document.getCurrentDocumentVersion().getId(),
-                    employee.getId(),
-                    ActionType.REJECTED,
-                    from,
-                    DocumentStatus.REJECTED,
-                    LocalDateTime.now()
-            ));
-
-            return true;
-        }
-        return false;
-    }
-
+    return false;
+  }
 
 }

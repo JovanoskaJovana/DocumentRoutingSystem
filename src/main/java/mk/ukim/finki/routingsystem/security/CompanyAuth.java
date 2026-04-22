@@ -1,35 +1,44 @@
 package mk.ukim.finki.routingsystem.security;
 
 import mk.ukim.finki.routingsystem.model.enumerations.Role;
-import mk.ukim.finki.routingsystem.repository.CompanyRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+
+/**
+ * Component for evaluating company-level authorization rules.
+ */
 
 @Component("companyAuth")
 public class CompanyAuth {
 
-    private final CompanyRepository companyRepository;
+  /**
+   * Returns true if the authenticated employee has the SUPER_ADMIN role.
+   *
+   * @param authentication the current authentication
+   * @return true if the employee is a SUPER_ADMIN, false otherwise
+   */
+  public boolean canChangeActivity(Authentication authentication) {
 
-    public CompanyAuth(CompanyRepository companyRepository) {
-        this.companyRepository = companyRepository;
+    if (authentication == null || !(authentication.getPrincipal() instanceof EmployeePrincipal employeePrincipal)) {
+      return false;
     }
 
-    public boolean canChangeActivity (Authentication authentication) {
+    return employeePrincipal.role() == Role.SUPER_ADMIN;
+  }
 
-        if (authentication == null || !(authentication.getPrincipal() instanceof EmployeePrincipal employeePrincipal)) {
-            return false;
-        }
+  /**
+   * Returns true if the authenticated employee has the SUPER_ADMIN role.
+   *
+   * @param authentication the current authentication
+   * @return true if the employee is a SUPER_ADMIN, false otherwise
+   */
+  public boolean canCreateCompany(Authentication authentication) {
 
-        return employeePrincipal.getRole() == Role.SUPER_ADMIN;
+    if (authentication == null || !(authentication.getPrincipal() instanceof EmployeePrincipal employeePrincipal)) {
+      return false;
     }
 
-    public boolean canCreateCompany (Authentication authentication) {
-
-        if (authentication == null || !(authentication.getPrincipal() instanceof EmployeePrincipal employeePrincipal)) {
-            return false;
-        }
-
-        return employeePrincipal.getRole() == Role.SUPER_ADMIN;
-    }
+    return employeePrincipal.role() == Role.SUPER_ADMIN;
+  }
 
 }

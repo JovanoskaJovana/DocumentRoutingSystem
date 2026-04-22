@@ -3,31 +3,34 @@ package mk.ukim.finki.routingsystem.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+/**
+ * Entity representing a company in the system.
+ */
+
 @Entity
 @Data
 public class Company {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    private String name;
+  private String name;
 
-    @Column(nullable = false, unique = true)
-    private String code;
+  @Column(nullable = false, unique = true)
+  private String code;
 
-    private Boolean active;
+  private Boolean active;
 
 
-    public Company() {
-    }
+  public Company() {
+  }
 
-    public Company(Long id, String name, String code, Boolean active) {
-        this.id = id;
-        this.name = name;
-        this.code = code;
-        this.active = active;
-    }
-
+  public Company(Long id, String name, String code, Boolean active) {
+    this.id = id;
+    this.name = name;
+    this.code = code;
+    this.active = active;
+  }
 
 }

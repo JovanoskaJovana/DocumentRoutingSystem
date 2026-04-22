@@ -11,70 +11,67 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller for managing departments.
+ */
+
 @RestController
-@RequestMapping ("api/departments")
+@RequestMapping("api/departments")
 public class DepartmentRestController {
 
-    private final DepartmentService departmentService;
+  private final DepartmentService departmentService;
 
-    public DepartmentRestController(DepartmentService departmentService) {
-        this.departmentService = departmentService;
-    }
+  public DepartmentRestController(DepartmentService departmentService) {
+    this.departmentService = departmentService;
+  }
 
-    @GetMapping
-    public List<CreateDisplayDepartmentDto> listAll(@AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
-        return departmentService.listAll(employeePrincipal.getCompanyId());
-    }
+  @GetMapping
+  public List<CreateDisplayDepartmentDto> listAll(@AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+    return departmentService.listAll(employeePrincipal.companyId());
+  }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/{id}")
-    public ResponseEntity<CreateDisplayDepartmentDto> findById(@PathVariable Long id,
-                                                               @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
-
-        return departmentService.findById(id, employeePrincipal.getCompanyId())
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping
-    public ResponseEntity<CreateDisplayDepartmentDto> save(@RequestBody CreateDisplayDepartmentDto createDisplayDepartmentDto,
-                                                           @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
-
-        CreateDisplayDepartmentDto saved = departmentService.save(createDisplayDepartmentDto, employeePrincipal.getCompanyId());
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{id}")
-    public ResponseEntity<CreateDisplayDepartmentDto> update(@PathVariable Long id,
-                                                             @RequestBody CreateDisplayDepartmentDto createDisplayDepartmentDto,
+  @PreAuthorize("hasRole('ADMIN')")
+  @GetMapping("/{id}")
+  public ResponseEntity<CreateDisplayDepartmentDto> findById(@PathVariable Long id,
                                                              @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
-        return departmentService.update(employeePrincipal.getCompanyId(), id, createDisplayDepartmentDto)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    return departmentService.findById(id, employeePrincipal.companyId())
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.notFound().build());
 
-    }
+  }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id,
-                                       @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping
+  public ResponseEntity<CreateDisplayDepartmentDto> save(@RequestBody CreateDisplayDepartmentDto createDisplayDepartmentDto,
+                                                         @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
-        boolean deleted = departmentService.delete(employeePrincipal.getCompanyId(), id);
+    CreateDisplayDepartmentDto saved = departmentService.save(createDisplayDepartmentDto, employeePrincipal.companyId());
 
-        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+  }
 
-    }
+  @PreAuthorize("hasRole('ADMIN')")
+  @PutMapping("/{id}")
+  public ResponseEntity<CreateDisplayDepartmentDto> update(@PathVariable Long id,
+                                                           @RequestBody CreateDisplayDepartmentDto createDisplayDepartmentDto,
+                                                           @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
+    return departmentService.update(employeePrincipal.companyId(), id, createDisplayDepartmentDto)
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.notFound().build());
 
+  }
 
+  @PreAuthorize("hasRole('ADMIN')")
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> delete(@PathVariable Long id,
+                                     @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
+    boolean deleted = departmentService.delete(employeePrincipal.companyId(), id);
 
+    return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
 
-
+  }
 
 }

@@ -23,128 +23,132 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+/**
+ * Implementation of {@link DocumentVersionService}
+ */
+
 @Service
 public class DocumentVersionServiceImpl implements DocumentVersionService {
 
-    public final DocumentVersionRepository documentVersionRepository;
-    private final DocumentVersionMapper documentVersionMapper;
-    private final EmployeeRepository employeeRepository;
-    private final DocumentRepository documentRepository;
-    private final ApplicationEventPublisher applicationEventPublisher;
+  public final DocumentVersionRepository documentVersionRepository;
+  private final DocumentVersionMapper documentVersionMapper;
+  private final EmployeeRepository employeeRepository;
+  private final DocumentRepository documentRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
 
-    public DocumentVersionServiceImpl(DocumentVersionRepository documentVersionRepository, DocumentVersionMapper documentVersionMapper, EmployeeRepository employeeRepository, DocumentRepository documentRepository, ApplicationEventPublisher applicationEventPublisher) {
-        this.documentVersionRepository = documentVersionRepository;
-        this.documentVersionMapper = documentVersionMapper;
-        this.employeeRepository = employeeRepository;
-        this.documentRepository = documentRepository;
-        this.applicationEventPublisher = applicationEventPublisher;
+  public DocumentVersionServiceImpl(DocumentVersionRepository documentVersionRepository, DocumentVersionMapper documentVersionMapper, EmployeeRepository employeeRepository, DocumentRepository documentRepository, ApplicationEventPublisher applicationEventPublisher) {
+    this.documentVersionRepository = documentVersionRepository;
+    this.documentVersionMapper = documentVersionMapper;
+    this.employeeRepository = employeeRepository;
+    this.documentRepository = documentRepository;
+    this.applicationEventPublisher = applicationEventPublisher;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<DisplayDocumentVersionDto> listAllVersionsOfADocument(Long documentId, Long companyId, Pageable pageable) {
+    return documentVersionRepository.findByDocument_IdAndDocument_Company_IdOrderByVersionNumberDesc(documentId, companyId, pageable)
+            .map(documentVersionMapper::toDto);
+  }
+
+  @Override
+  @Transactional
+  public DisplayDocumentVersionDto createAndSaveADocumentVersion(CreateDocumentVersionDto createDocumentVersionDto, Long companyId) {
+
+    Employee employee = employeeRepository.findByIdAndCompany_Id(createDocumentVersionDto.editedByEmployee(), companyId)
+            .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
+
+    Document document = documentRepository.findByIdAndCompany_Id(createDocumentVersionDto.documentId(), companyId)
+            .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
+
+    DocumentVersion documentVersion = new DocumentVersion();
+    documentVersion.setDocument(document);
+    documentVersion.setUploadedByEmployee(employee);
+    documentVersion.setFileName(createDocumentVersionDto.fileName());
+    documentVersion.setVersionNumber(createDocumentVersionDto.versionNumber());
+    documentVersion.setUploadedDateTime(LocalDateTime.now());
+    documentVersion.setFileData(createDocumentVersionDto.fileData());
+    documentVersion.setChangeNote(createDocumentVersionDto.changeNote());
+
+    documentVersionRepository.save(documentVersion);
+
+    return documentVersionMapper.toDto(documentVersion);
+  }
+
+  @Override
+  @Transactional
+  public DisplayDocumentVersionDto updateAndSaveDocumentVersion(Long documentId, UpdateDocumentAndVersionDto updateDto, Long companyId) {
+
+    Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
+            .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
+
+    DocumentVersion currentVersion = document.getCurrentDocumentVersion();
+
+    DocumentStatus from = document.getDocumentStatus();
+
+    DocumentVersion documentVersion = documentVersionRepository.findByIdAndDocument_Company_Id(currentVersion.getId(), companyId)
+            .orElseThrow(() -> new DocumentVersionNotFoundException("Version for document is not found"));
+
+    boolean newFile = updateDto.fileData() != null && updateDto.fileData().length > 0;
+
+    DocumentVersion nextVersion = new DocumentVersion();
+
+    if (newFile && (updateDto.changeNote() == null || updateDto.changeNote().isBlank())) {
+      throw new RequiredChangeNoteException("Change Note is required when uploading a new file");
+    }
+    if (updateDto.editedByEmployeeId() == null) {
+      throw new RequiredEmployeeIdException("Employee Id is required when editing a new file");
     }
 
-    @Override
-    @Transactional (readOnly = true)
-    public Page<DisplayDocumentVersionDto> listAllVersionsOfADocument(Long documentId, Long companyId, Pageable pageable) {
-        return documentVersionRepository.findByDocument_IdAndDocument_Company_IdOrderByVersionNumberDesc(documentId, companyId, pageable)
-                .map(documentVersionMapper::toDto);
+    nextVersion.setVersionNumber(documentVersion.getVersionNumber() == 0 ? 1 : documentVersion.getVersionNumber() + 1);
+
+    if (updateDto.title() != null && !updateDto.title().isBlank()) {
+      nextVersion.setFileName(updateDto.title().trim());
+      document.setTitle(updateDto.title().trim());
+    } else {
+      nextVersion.setFileName(documentVersion.getFileName());
     }
 
-    @Override
-    @Transactional
-    public DisplayDocumentVersionDto createAndSaveADocumentVersion(CreateDocumentVersionDto createDocumentVersionDto, Long companyId) {
-
-        Employee employee = employeeRepository.findByIdAndCompany_Id(createDocumentVersionDto.editedByEmployee(), companyId)
-                .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
-
-        Document document = documentRepository.findByIdAndCompany_Id(createDocumentVersionDto.documentId(), companyId)
-                .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
-
-        DocumentVersion documentVersion = new DocumentVersion();
-        documentVersion.setDocument(document);
-        documentVersion.setUploadedByEmployee(employee);
-        documentVersion.setFileName(createDocumentVersionDto.fileName());
-        documentVersion.setVersionNumber(createDocumentVersionDto.versionNumber());
-        documentVersion.setUploadedDateTime(LocalDateTime.now());
-        documentVersion.setFileData(createDocumentVersionDto.fileData());
-        documentVersion.setChangeNote(createDocumentVersionDto.changeNote());
-
-        documentVersionRepository.save(documentVersion);
-
-        return documentVersionMapper.toDto(documentVersion);
+    if (newFile) {
+      nextVersion.setFileData(updateDto.fileData());
+    } else {
+      nextVersion.setFileData(documentVersion.getFileData());
     }
 
-    @Override
-    @Transactional
-    public DisplayDocumentVersionDto updateAndSaveDocumentVersion(Long documentId, UpdateDocumentAndVersionDto updateDto, Long companyId){
+    Employee employee = employeeRepository.findByIdAndCompany_Id(updateDto.editedByEmployeeId(), companyId)
+            .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
 
-        Document document = documentRepository.findByIdAndCompany_Id(documentId, companyId)
-                .orElseThrow(() -> new DocumentNotFoundException("Document not found"));
+    nextVersion.setUploadedByEmployee(employee);
+    document.setUploadedByEmployee(employee);
 
-        DocumentVersion currentVersion = document.getCurrentDocumentVersion();
-
-        DocumentStatus from = document.getDocumentStatus();
-
-        DocumentVersion documentVersion = documentVersionRepository.findByIdAndDocument_Company_Id(currentVersion.getId(), companyId)
-                .orElseThrow(() -> new DocumentVersionNotFoundException("Version for document is not found"));
-
-        boolean newFile = updateDto.fileData() != null && updateDto.fileData().length > 0;
-
-        DocumentVersion nextVersion = new DocumentVersion();
-
-        if (newFile && (updateDto.changeNote() == null || updateDto.changeNote().isBlank())) {
-            throw new RequiredChangeNoteException("Change Note is required when uploading a new file");
-        }
-        if (updateDto.editedByEmployeeId() == null) {
-            throw new RequiredEmployeeIdException("Employee Id is required when editing a new file");
-        }
-
-        nextVersion.setVersionNumber(documentVersion.getVersionNumber() == 0 ? 1 : documentVersion.getVersionNumber() + 1);
-
-        if (updateDto.title() != null && !updateDto.title().isBlank()) {
-            nextVersion.setFileName(updateDto.title().trim());
-            document.setTitle(updateDto.title().trim());
-        } else {
-            nextVersion.setFileName(documentVersion.getFileName());
-        }
-
-        if (newFile) {
-            nextVersion.setFileData(updateDto.fileData());
-        } else {
-            nextVersion.setFileData(documentVersion.getFileData());
-        }
-
-        Employee employee = employeeRepository.findByIdAndCompany_Id(updateDto.editedByEmployeeId(), companyId)
-                .orElseThrow(() -> new EmployeeNotFoundException("Employee not found"));
-
-        nextVersion.setUploadedByEmployee(employee);
-        document.setUploadedByEmployee(employee);
-
-        nextVersion.setChangeNote(updateDto.changeNote().trim());
-        nextVersion.setUploadedDateTime(LocalDateTime.now());
-        nextVersion.setDocument(document);
+    nextVersion.setChangeNote(updateDto.changeNote().trim());
+    nextVersion.setUploadedDateTime(LocalDateTime.now());
+    nextVersion.setDocument(document);
 
 
-        documentVersionRepository.save(nextVersion);
-        document.setCurrentDocumentVersion(nextVersion);
-        documentRepository.save(document);
+    documentVersionRepository.save(nextVersion);
+    document.setCurrentDocumentVersion(nextVersion);
+    documentRepository.save(document);
 
-        applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-                documentId,
-                nextVersion.getId(),
-                employee.getId(),
-                ActionType.EDITED,
-                from,
-                DocumentStatus.EDITED,
-                LocalDateTime.now()
-        ));
+    applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
+            documentId,
+            nextVersion.getId(),
+            employee.getId(),
+            ActionType.EDITED,
+            from,
+            DocumentStatus.EDITED,
+            LocalDateTime.now()
+    ));
 
-        return documentVersionMapper.toDto(nextVersion);
-    }
+    return documentVersionMapper.toDto(nextVersion);
+  }
 
-    @Override
-    @Transactional
-    public DisplayDocumentVersionDto getDocumentVersion(Long documentVersionId, Long companyId) {
-        return documentVersionRepository.findByIdAndDocument_Company_Id(documentVersionId, companyId)
-                .map(documentVersionMapper::toDto)
-                .orElseThrow(() -> new DocumentVersionNotFoundException("Document version not found"));
+  @Override
+  @Transactional
+  public DisplayDocumentVersionDto getDocumentVersion(Long documentVersionId, Long companyId) {
+    return documentVersionRepository.findByIdAndDocument_Company_Id(documentVersionId, companyId)
+            .map(documentVersionMapper::toDto)
+            .orElseThrow(() -> new DocumentVersionNotFoundException("Document version not found"));
 
-    }
+  }
 }

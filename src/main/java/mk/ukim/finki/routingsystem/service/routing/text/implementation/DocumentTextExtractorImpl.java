@@ -10,74 +10,78 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 
+/**
+ * Implementation of {@link DocumentTextExtractor} using Apache PDFBox.
+ */
+
 @Service
 public class DocumentTextExtractorImpl implements DocumentTextExtractor {
 
-    // extract all the pages -> 0 = all pages
-    @Value("${app.text.extract.max-pages:0}")
-    private int maxPages;
+  // extract all the pages -> 0 = all pages
+  @Value("${app.text.extract.max-pages:0}")
+  private int maxPages;
 
-    // if false and PDF is encrypted - (return "")
-    @Value("${app.text.extract.allow-encrypted:false}")
-    private boolean allowEncrypted;
+  // if false and PDF is encrypted - (return "")
+  @Value("${app.text.extract.allow-encrypted:false}")
+  private boolean allowEncrypted;
 
 
-    @Override
-    public String extractAll(byte[] text) {
+  @Override
+  public String extractAll(byte[] text) {
 
-        if (text == null || text.length == 0) {
-            return "";
-        }
-
-        try (PDDocument document = Loader.loadPDF(text)) {
-
-            if (document.isEncrypted() && !allowEncrypted) {
-                return "";
-            }
-
-            PDFTextStripper pdfStripper = new PDFTextStripper();
-
-            if (maxPages > 0) {
-                pdfStripper.setStartPage(1);
-                int lastPage = Math.min(document.getNumberOfPages(), maxPages);
-                pdfStripper.setEndPage(lastPage);
-            }
-
-            return pdfStripper.getText(document);
-
-        } catch (Exception e) {
-            return "";
-        }
-
+    if (text == null || text.length == 0) {
+      return "";
     }
 
-    @Override
-    public TitleAndBody extractTitleAndBody(byte[] text) {
+    try (PDDocument document = Loader.loadPDF(text)) {
 
-        String allText = extractAll(text);
+      if (document.isEncrypted() && !allowEncrypted) {
+        return "";
+      }
 
-        if (allText.isBlank()) {
-            return new TitleAndBody("", "");
-        }
+      PDFTextStripper pdfStripper = new PDFTextStripper();
 
-        String[] lines = allText.split("\\R+");
+      if (maxPages > 0) {
+        pdfStripper.setStartPage(1);
+        int lastPage = Math.min(document.getNumberOfPages(), maxPages);
+        pdfStripper.setEndPage(lastPage);
+      }
 
-        int i = 0;
-        String title = "";
+      return pdfStripper.getText(document);
 
-        while (i < lines.length && (title = lines[i].trim()).isBlank()) {
-            i++;
-        }
-
-        String body;
-
-        if (i + 1 < lines.length) {
-            String[] rest = Arrays.copyOfRange(lines, i + 1, lines.length);
-            body = String.join("\n", rest);
-        } else {
-            body = "";
-        }
-
-        return new TitleAndBody(title, body);
+    } catch (Exception e) {
+      return "";
     }
+
+  }
+
+  @Override
+  public TitleAndBody extractTitleAndBody(byte[] text) {
+
+    String allText = extractAll(text);
+
+    if (allText.isBlank()) {
+      return new TitleAndBody("", "");
+    }
+
+    String[] lines = allText.split("\\R+");
+
+    int i = 0;
+    String title = "";
+
+    while (i < lines.length && (title = lines[i].trim()).isBlank()) {
+      i++;
+    }
+
+    String body;
+
+    if (i + 1 < lines.length) {
+      String[] rest = Arrays.copyOfRange(lines, i + 1, lines.length);
+      body = String.join("\n", rest);
+    } else {
+      body = "";
+    }
+
+    return new TitleAndBody(title, body);
+  }
 }
