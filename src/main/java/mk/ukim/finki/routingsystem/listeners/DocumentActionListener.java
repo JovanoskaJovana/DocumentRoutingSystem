@@ -23,7 +23,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
  */
 
 @Component
-@EnableAsync
 public class DocumentActionListener {
 
   private final DocumentRepository documentRepository;

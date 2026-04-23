@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
  */
 
 @Component
-@EnableAsync
 public class DocumentDownloadListener {
 
   private final DocumentRepository documentRepository;

@@ -1,18 +1,9 @@
 package mk.ukim.finki.routingsystem.web;
 
-import mk.ukim.finki.routingsystem.events.DocumentActionRequestedEvent;
-import mk.ukim.finki.routingsystem.events.DocumentDownloadRequestedEvent;
-import mk.ukim.finki.routingsystem.model.documentEntities.DocumentVersion;
 import mk.ukim.finki.routingsystem.model.dto.DocumentDownload.DisplayDocumentDownloadDto;
-import mk.ukim.finki.routingsystem.model.dto.DocumentDownload.FileResource;
-import mk.ukim.finki.routingsystem.model.enumerations.ActionType;
-import mk.ukim.finki.routingsystem.model.enumerations.DocumentStatus;
-import mk.ukim.finki.routingsystem.model.exceptions.DocumentVersionNotFoundException;
-import mk.ukim.finki.routingsystem.repository.DocumentVersionRepository;
+import mk.ukim.finki.routingsystem.model.dto.DocumentDownload.PreparedDocumentDownload;
 import mk.ukim.finki.routingsystem.security.EmployeePrincipal;
 import mk.ukim.finki.routingsystem.service.DocumentDownloadService;
-import mk.ukim.finki.routingsystem.service.LoadingFileService;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,7 +14,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -34,70 +24,31 @@ import java.util.List;
 @RequestMapping("/api/documents")
 public class DocumentDownloadRestController {
 
-  private final LoadingFileService fileService;
-  private final DocumentVersionRepository documentVersionRepository;
-  private final ApplicationEventPublisher applicationEventPublisher;
   private final DocumentDownloadService documentDownloadService;
 
-  public DocumentDownloadRestController(LoadingFileService fileService, DocumentVersionRepository documentVersionRepository, ApplicationEventPublisher applicationEventPublisher, DocumentDownloadService documentDownloadService) {
-    this.fileService = fileService;
-    this.documentVersionRepository = documentVersionRepository;
-    this.applicationEventPublisher = applicationEventPublisher;
+  public DocumentDownloadRestController(DocumentDownloadService documentDownloadService) {
     this.documentDownloadService = documentDownloadService;
   }
-
 
   @GetMapping("{documentId}/versions/{versionId}/download")
   public ResponseEntity<Resource> downloadPdf(@PathVariable Long documentId,
                                               @PathVariable Long versionId,
                                               @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
+    PreparedDocumentDownload prepareDownload = documentDownloadService.prepareDownload(documentId, versionId, employeePrincipal.companyId(), employeePrincipal.employeeId());
 
-    DocumentVersion documentVersion = documentVersionRepository.findById(versionId)
-            .orElseThrow(() -> new DocumentVersionNotFoundException("Document version not found."));
 
-    if (!documentVersion.getDocument().getId().equals(documentId)) {
-      throw new DocumentVersionNotFoundException("Version does not belong to this document.");
-    }
-
-    FileResource file = fileService.loadFile(documentId, versionId, employeePrincipal.companyId());
-
-    if (file == null || file.length() == 0) {
+    if (prepareDownload.file() == null) {
       return ResponseEntity.notFound().build();
     }
 
-    String title = documentVersion.getDocument().getTitle().trim();
-
-    applicationEventPublisher.publishEvent(
-            new DocumentDownloadRequestedEvent(
-                    documentId,
-                    title,
-                    employeePrincipal.employeeId(),
-                    versionId,
-                    LocalDateTime.now())
-    );
-
-    applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(
-            documentVersion.getDocument().getId(),
-            documentVersion.getId(),
-            employeePrincipal.employeeId(),
-            ActionType.DOWNLOADED,
-            documentVersion.getDocument().getDocumentStatus(),
-            DocumentStatus.DOWNLOADED,
-            LocalDateTime.now()
-    ));
-
-
-    String fileName = documentVersion.getFileName() != null ? documentVersion.getFileName() : "document-" + versionId + ".pdf";
-
     return ResponseEntity.ok()
-            .contentLength(file.length())
-            .contentType(file.mediaType() != null ? file.mediaType() : MediaType.APPLICATION_PDF)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-            .body(file.resource());
+            .contentLength(prepareDownload.file().length())
+            .contentType(prepareDownload.file().mediaType() != null ? prepareDownload.file().mediaType() : MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + prepareDownload.filename() + "\"")
+            .body(prepareDownload.file().resource());
 
   }
-
 
   @GetMapping("/{documentId}/documentDownloads")
   public ResponseEntity<List<DisplayDocumentDownloadDto>> getDownloadsByDocument(@PathVariable Long documentId,
@@ -106,7 +57,6 @@ public class DocumentDownloadRestController {
     return ResponseEntity.ok(documentDownloadService.findAllDownloadsByDocument(documentId, employeePrincipal.companyId()));
 
   }
-
 
   @GetMapping("/downloadsByMe")
   public ResponseEntity<List<DisplayDocumentDownloadDto>> getDownloadsByEmployee(@AuthenticationPrincipal EmployeePrincipal employeePrincipal) {

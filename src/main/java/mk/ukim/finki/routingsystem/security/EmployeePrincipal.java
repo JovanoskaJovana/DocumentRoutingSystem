@@ -20,7 +20,6 @@ import java.util.List;
  * @param companyId    the id of the company the employee belongs to
  */
 
-@Getter
 public record EmployeePrincipal(Long employeeId, String firstName, Role role, EmployeeType employeeType,
                                 Long departmentId, Long companyId) implements UserDetails {
 
