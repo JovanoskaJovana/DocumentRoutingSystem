@@ -37,7 +37,7 @@ public class AuthenticationRestController {
       employee = employeeRepository.findByEmailAndRole(loginRequestDto.email(), Role.SUPER_ADMIN)
               .orElseThrow(() -> new RuntimeException("Invalid credentials"));
     } else {
-      employee = employeeRepository.findByEmailAndCompany_Code(loginRequestDto.email(), loginRequestDto.companyCode())
+      employee = employeeRepository.findByEmailAndCompany_Code(loginRequestDto.email(), loginRequestDto.companyCode().toUpperCase())
               .orElseThrow(() -> new RuntimeException("Invalid credentials"));
     }
 
