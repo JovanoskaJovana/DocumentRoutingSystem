@@ -217,7 +217,7 @@ public class DocumentServiceImpl implements DocumentService {
       document.setRoutedToDepartment(null);
       document.getRoutedToEmployees().clear();
       document.setDocumentStatus(DocumentStatus.FAILED_ROUTING);
-      document.setSuggestedDepartments(routingDecision.tiedDepartments());
+      document.setSuggestedDepartments(routingDecision.selectedDepartments());
       documentRepository.save(document);
 
       applicationEventPublisher.publishEvent(new DocumentActionRequestedEvent(

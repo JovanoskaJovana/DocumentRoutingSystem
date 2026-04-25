@@ -23,7 +23,8 @@ public class RoutingDecisionMaker {
    * A department is automatically selected if:
    *   Its score is above the minimum threshold of {@value MIN_THRESHOLD}
    *   It leads the second-best score by more than {@value MIN_DIFFERENCE}
-   * Otherwise, manual review is triggered with the tied departments as candidates.
+   * Otherwise, manual review is triggered with all departments scoring
+   * within 1 point of the top score as candidates.
    *
    * @param scores a map of department keys to their computed keyword scores
    * @return a {@link RoutingDecision} containing the result of the routing decision
@@ -36,13 +37,15 @@ public class RoutingDecisionMaker {
       return new RoutingDecision(null, null, true, scores);
     }
 
-    List<String> tied = new ArrayList<>();
+    List<String> selectedDepartments = new ArrayList<>();
     double secondBest = 0.0;
 
     for (Map.Entry<String, Double> entry : scores.entrySet()) {
 
-      if (Math.abs(topScore - entry.getValue()) < 0.0001) {
-        tied.add(entry.getKey());
+      double difference = topScore - entry.getValue();
+
+      if (difference >= - 0.0001 && difference < 1) {
+        selectedDepartments.add(entry.getKey());
       }
 
       if (entry.getValue() < topScore && entry.getValue() > secondBest) {
@@ -50,10 +53,10 @@ public class RoutingDecisionMaker {
       }
     }
 
-    if (tied.size() == 1 && (topScore - secondBest) > MIN_DIFFERENCE) {
-      return new RoutingDecision(tied.getFirst(), null, false, scores);
+    if (selectedDepartments.size() == 1 && (topScore - secondBest) > MIN_DIFFERENCE) {
+      return new RoutingDecision(selectedDepartments.getFirst(), null, false, scores);
     } else {
-      return new RoutingDecision(null, tied, true, scores);
+      return new RoutingDecision(null, selectedDepartments, true, scores);
     }
   }
 

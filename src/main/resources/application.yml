@@ -12,8 +12,8 @@ app:
                     "income", "expense", "refund", "budget", "revenue", "audit",
                     "liability", "advance", "loss", "profit", "accounting" ]
 
-            negative: [ "agreement", "terms", "employment", "vacation", "onboarding",
-                        "bug", "system" ]
+            negative: [ "vacation", "onboarding", "resignation", "payslip",
+                        "bug", "phishing", "malware", "outage" ]
 
           LG:
             strong: [ "terms and conditions", "service level agreement",
@@ -24,7 +24,8 @@ app:
                     "law firm", "termination", "clause", "effective date", "privacy",
                     "trademark" ]
 
-            negative: [ "leave", "invoice", "ticket", "vat" ]
+            negative: [ "vacation", "payslip", "onboarding", "resignation",
+                        "bug", "phishing", "malware", "outage" ]
 
           HR:
             strong: [ "vacation request", "vacation leave", "unpaid leave", "annual leave",
@@ -34,7 +35,8 @@ app:
                     "probation", "parental leave", "maternity leave", "paternity leave",
                     "recruitment", "interview", "team building", "holiday" ]
 
-            negative: [ "incident", "contract", "nda", "invoice", "expense" ]
+            negative: [ "incident", "nda", "phishing", "malware",
+                        "bug", "outage", "server", "database" ]
 
           IT:
             strong: [ "security incident", "vulnerability", "password reset", "login failure",
@@ -44,6 +46,9 @@ app:
                     "authentication", "authorization", "cyberattack", "encryption",
                     "firewall", "network", "server", "database", "cloud",
                     "access issue", "system maintenance", "software update", "rollback" ]
+
+            negative: [ "vacation", "payslip", "onboarding", "resignation",
+                        "invoice", "vat", "billing", "court", "law firm" ]
 
       ZPP:
         admin-dept-key: ADMIN
@@ -56,8 +61,8 @@ app:
                     "income", "expense", "refund", "budget", "revenue", "audit",
                     "liability", "advance", "loss", "profit", "accounting" ]
 
-            negative: [ "agreement", "terms", "employment", "vacation", "onboarding",
-                        "bug", "system" ]
+            negative: [ "vacation", "onboarding", "resignation", "payslip",
+                        "bug", "phishing", "malware", "outage" ]
 
           LEGAL:
             strong: [ "terms and conditions", "service level agreement",
@@ -68,7 +73,8 @@ app:
                     "law firm", "termination", "clause", "effective date", "privacy",
                     "trademark" ]
 
-            negative: [ "leave", "invoice", "ticket", "vat" ]
+            negative: [ "vacation", "payslip", "onboarding", "resignation",
+                        "bug", "phishing", "malware", "outage" ]
 
           HR:
             strong: [ "vacation request", "vacation leave", "unpaid leave", "annual leave",
@@ -78,7 +84,8 @@ app:
                     "probation", "parental leave", "maternity leave", "paternity leave",
                     "recruitment", "interview", "team building", "holiday" ]
 
-            negative: [ "incident", "contract", "nda", "invoice", "expense" ]
+            negative: [ "incident", "nda", "phishing", "malware",
+                        "bug", "outage", "server", "database" ]
 
           IT:
             strong: [ "security incident", "vulnerability", "password reset", "login failure",
@@ -88,6 +95,9 @@ app:
                     "authentication", "authorization", "cyberattack", "encryption",
                     "firewall", "network", "server", "database", "cloud",
                     "access issue", "system maintenance", "software update", "rollback" ]
+
+            negative: [ "vacation", "payslip", "onboarding", "resignation",
+                        "invoice", "vat", "billing", "court", "law firm" ]
 
 
 jwt:
