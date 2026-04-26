@@ -5,7 +5,7 @@ import mk.ukim.finki.routingsystem.domain.rules.RoutingRules;
 import mk.ukim.finki.routingsystem.domain.rules.TenantRules;
 import mk.ukim.finki.routingsystem.model.dto.Routing.CompiledRules;
 import mk.ukim.finki.routingsystem.model.dto.Routing.TitleAndBody;
-import mk.ukim.finki.routingsystem.model.exceptions.RoutingRulesForTenantNotFound;
+import mk.ukim.finki.routingsystem.model.exceptions.RoutingRulesForTenantNotFoundException;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -40,14 +40,14 @@ public class KeywordScorer {
    * @param tenantCode the code identifying the tenant whose routing rules are used
    * @param document   the extracted title and body of the document to score
    * @return a map of department keys to their computed scores
-   * @throws mk.ukim.finki.routingsystem.model.exceptions.RoutingRulesForTenantNotFound if no routing rules are found for the given tenant
+   * @throws RoutingRulesForTenantNotFoundException if no routing rules are found for the given tenant
    */
   public Map<String, Double> score(String tenantCode, TitleAndBody document) {
 
     Map<String, CompiledRules> deptRules = cachedRules.get(tenantCode);
 
     if (deptRules == null) {
-      throw new RoutingRulesForTenantNotFound("No routing rules found for tenant: " + tenantCode);
+      throw new RoutingRulesForTenantNotFoundException("No routing rules found for tenant: " + tenantCode);
     }
 
     String title = normalize(document.title());

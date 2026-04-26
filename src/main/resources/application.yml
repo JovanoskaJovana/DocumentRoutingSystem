@@ -53,7 +53,7 @@ app:
       ZPP:
         admin-dept-key: ADMIN
         departments:
-          FINANCE:
+          FN:
             strong: [ "invoice number", "expense report", "purchase order",
                       "bank transfer", "vat", "balance sheet", "statement of account" ]
 
@@ -64,7 +64,7 @@ app:
             negative: [ "vacation", "onboarding", "resignation", "payslip",
                         "bug", "phishing", "malware", "outage" ]
 
-          LEGAL:
+          LG:
             strong: [ "terms and conditions", "service level agreement",
                       "nda", "intellectual property", "governing law", "jurisdiction" ]
 
