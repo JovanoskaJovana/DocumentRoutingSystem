@@ -9,29 +9,33 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller for managing document actions.
+ */
+
 @RestController
 @RequestMapping("/api/documents")
 public class DocumentActionRestController {
 
-    private final DocumentActionService documentActionService;
+  private final DocumentActionService documentActionService;
 
 
-    public DocumentActionRestController(DocumentActionService documentActionService) {
-        this.documentActionService = documentActionService;
-    }
+  public DocumentActionRestController(DocumentActionService documentActionService) {
+    this.documentActionService = documentActionService;
+  }
 
-    @GetMapping("{documentId}/documentActions")
-    public ResponseEntity<List<DisplayDocumentActionDto>> getAllDocumentActions(@PathVariable Long documentId,
-                                                                                @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+  @GetMapping("{documentId}/documentActions")
+  public ResponseEntity<List<DisplayDocumentActionDto>> getAllDocumentActions(@PathVariable Long documentId,
+                                                                              @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
-        return ResponseEntity.ok(documentActionService.findAllForADocument(documentId, employeePrincipal.getCompanyId()));
-    }
+    return ResponseEntity.ok(documentActionService.findAllForADocument(documentId, employeePrincipal.companyId()));
+  }
 
-    @GetMapping("/{documentId}/actionsByMe")
-    public ResponseEntity<List<DisplayDocumentActionDto>> getAllActionsByEmployeeId(@PathVariable Long documentId,
-                                                                                    @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+  @GetMapping("/{documentId}/actionsByMe")
+  public ResponseEntity<List<DisplayDocumentActionDto>> getAllActionsByEmployeeId(@PathVariable Long documentId,
+                                                                                  @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
-        return ResponseEntity.ok(documentActionService.findAllBySpecificEmployee(documentId, employeePrincipal.getEmployeeId(), employeePrincipal.getCompanyId()));
-    }
+    return ResponseEntity.ok(documentActionService.findAllBySpecificEmployee(documentId, employeePrincipal.employeeId(), employeePrincipal.companyId()));
+  }
 
 }

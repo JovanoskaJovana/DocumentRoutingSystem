@@ -5,6 +5,9 @@ import mk.ukim.finki.routingsystem.model.enumerations.DocumentStatus;
 
 import java.time.LocalDateTime;
 
+/**
+ * Event published when a document action is requested.
+ */
 public record DocumentActionRequestedEvent(
         Long documentId,
         Long versionId,
@@ -13,4 +16,5 @@ public record DocumentActionRequestedEvent(
         DocumentStatus fromStatus,
         DocumentStatus toStatus,
         LocalDateTime dateTime
-) {}
+) {
+}

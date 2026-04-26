@@ -6,22 +6,27 @@ import mk.ukim.finki.routingsystem.service.routing.rules.DocumentRouter;
 
 import java.util.Map;
 
+/**
+ * Implementation of {@link DocumentRouter} that combines keyword scoring
+ * and decision-making to determine the routing outcome for a document.
+ */
+
 public class DocumentRouterImpl implements DocumentRouter {
 
-    private final KeywordScorer keywordScorer;
-    private final RoutingDecisionMaker decisionMaker;
+  private final KeywordScorer keywordScorer;
+  private final RoutingDecisionMaker decisionMaker;
 
-    public DocumentRouterImpl(KeywordScorer keywordScorer, RoutingDecisionMaker decisionMaker) {
-        this.keywordScorer = keywordScorer;
-        this.decisionMaker = decisionMaker;
-    }
+  public DocumentRouterImpl(KeywordScorer keywordScorer, RoutingDecisionMaker decisionMaker) {
+    this.keywordScorer = keywordScorer;
+    this.decisionMaker = decisionMaker;
+  }
 
-    @Override
-    public RoutingDecision route(String tenantCode, TitleAndBody document) {
+  @Override
+  public RoutingDecision route(String tenantCode, TitleAndBody document) {
 
-        Map<String, Double> score = keywordScorer.score(tenantCode, document);
+    Map<String, Double> score = keywordScorer.score(tenantCode, document);
 
-        return decisionMaker.decide(score);
+    return decisionMaker.decide(score);
 
-    }
+  }
 }

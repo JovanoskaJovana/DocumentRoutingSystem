@@ -5,62 +5,63 @@ import mk.ukim.finki.routingsystem.model.dto.Employee.LoginRequestDto;
 import mk.ukim.finki.routingsystem.model.dto.Employee.LoginResponseDto;
 import mk.ukim.finki.routingsystem.model.enumerations.Role;
 import mk.ukim.finki.routingsystem.repository.EmployeeRepository;
-import mk.ukim.finki.routingsystem.security.EmployeePrincipal;
 import mk.ukim.finki.routingsystem.security.JwtUtil;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+/**
+ * REST controller for managing authentication.
+ */
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthenticationRestController {
 
-    private final EmployeeRepository employeeRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+  private final EmployeeRepository employeeRepository;
+  private final PasswordEncoder passwordEncoder;
+  private final JwtUtil jwtUtil;
 
-    public AuthenticationRestController(EmployeeRepository employeeRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
-        this.employeeRepository = employeeRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtUtil = jwtUtil;
+  public AuthenticationRestController(EmployeeRepository employeeRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    this.employeeRepository = employeeRepository;
+    this.passwordEncoder = passwordEncoder;
+    this.jwtUtil = jwtUtil;
+  }
+
+  @PostMapping("/login")
+  public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto) {
+
+    Employee employee;
+
+    if (loginRequestDto.companyCode() == null || loginRequestDto.companyCode().isBlank()) {
+      employee = employeeRepository.findByEmailAndRole(loginRequestDto.email(), Role.SUPER_ADMIN)
+              .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+    } else {
+      employee = employeeRepository.findByEmailAndCompany_Code(loginRequestDto.email(), loginRequestDto.companyCode().toUpperCase())
+              .orElseThrow(() -> new RuntimeException("Invalid credentials"));
     }
 
-
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto, @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
-
-        Employee employee;
-
-        if (loginRequestDto.companyCode() == null || loginRequestDto.companyCode().isBlank()) {
-            employee = employeeRepository.findByEmailAndRole(loginRequestDto.email(), Role.SUPER_ADMIN)
-                    .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-        } else {
-            employee = employeeRepository.findByEmailAndCompany_Code(loginRequestDto.email(), loginRequestDto.companyCode())
-                    .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-        }
-
-        if (!passwordEncoder.matches(loginRequestDto.password(), employee.getPasswordHash())) {
-            return ResponseEntity.status(401).build();
-        }
-
-        Long departmentId = employee.getDepartment() != null ? employee.getDepartment().getId() : null;
-        Long companyId = employee.getCompany() != null ? employee.getCompany().getId() : null;
-
-        String token = jwtUtil.generateToken(
-                employee.getId(),
-                employee.getFirstName(),
-                employee.getRole(),
-                employee.getType(),
-                departmentId,
-                companyId
-        );
-        return ResponseEntity.ok(new LoginResponseDto(token));
-
+    if (!passwordEncoder.matches(loginRequestDto.password(), employee.getPasswordHash())) {
+      return ResponseEntity.status(401).build();
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        return ResponseEntity.ok().build();
-    }
+    Long departmentId = employee.getDepartment() != null ? employee.getDepartment().getId() : null;
+    Long companyId = employee.getCompany() != null ? employee.getCompany().getId() : null;
+
+    String token = jwtUtil.generateToken(
+            employee.getId(),
+            employee.getFirstName(),
+            employee.getRole(),
+            employee.getType(),
+            departmentId,
+            companyId
+    );
+    return ResponseEntity.ok(new LoginResponseDto(token));
+
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<Void> logout() {
+    return ResponseEntity.ok().build();
+  }
 }

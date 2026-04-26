@@ -5,35 +5,33 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing a manual review action in the system.
+ */
+
 @Entity
 @Data
 public class ManualReviewAction {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne
-    private Company company;
+  @ManyToOne
+  private Company company;
 
-    @ManyToOne
-    private Department manualChosenDepartment;
+  @ManyToOne
+  private Department manualChosenDepartment;
 
-    private String documentTitle;
+  @Column(columnDefinition = "TEXT")
+  private String documentTitle;
 
-    private String documentText;
+  @Column(columnDefinition = "TEXT")
+  private String documentText;
 
-    private LocalDateTime timestamp;
+  private LocalDateTime timestamp;
 
+  public ManualReviewAction() {
+  }
 
-    public ManualReviewAction() {
-    }
-
-    public ManualReviewAction(Company company, Department manualChosenDepartment, String documentTitle, String documentText, LocalDateTime timestamp) {
-        this.company = company;
-        this.manualChosenDepartment = manualChosenDepartment;
-        this.documentTitle = documentTitle;
-        this.documentText = documentText;
-        this.timestamp = timestamp;
-    }
 }

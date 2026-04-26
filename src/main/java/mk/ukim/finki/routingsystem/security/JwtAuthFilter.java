@@ -17,49 +17,59 @@ import java.io.IOException;
 import static mk.ukim.finki.routingsystem.security.JwtProperties.TOKEN_PREFIX;
 import static mk.ukim.finki.routingsystem.security.JwtProperties.HEADER_STRING;
 
+/**
+ * Filter that intercepts incoming requests and authenticates employees based on a JWT token found in the Authorization header.
+ * Runs once per request.
+ */
+
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+  private final JwtUtil jwtUtil;
 
-    public JwtAuthFilter(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
+  public JwtAuthFilter(JwtUtil jwtUtil) {
+    this.jwtUtil = jwtUtil;
+  }
+
+  /**
+   * Extracts and validates the JWT token from the Authorization header.
+   * If valid, sets the authenticated employee in the {@link SecurityContextHolder}.
+   * If the token is invalid or expired, returns a 401 Unauthorized response.
+   * Requests missing a Bearer token are forwarded to the next filter without setting authentication.
+   */
+  @Override
+  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+
+    String header = request.getHeader(HEADER_STRING);
+    if (header == null || !header.startsWith(TOKEN_PREFIX)) {
+      filterChain.doFilter(request, response);
+      return;
     }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    String token = header.substring(TOKEN_PREFIX.length());
 
-        String header = request.getHeader(HEADER_STRING);
-        if (header == null || !header.startsWith(TOKEN_PREFIX)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token = header.substring(TOKEN_PREFIX.length());
-
-        try {
-            if (SecurityContextHolder.getContext().getAuthentication() != null) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-            Long employeeId = jwtUtil.employeeIdFromToken(token);
-            String firstName = jwtUtil.nameFromToken(token);
-            Role role = jwtUtil.roleFromToken(token);
-            EmployeeType employeeType = jwtUtil.employeeTypeFromToken(token);
-            Long departmentId = jwtUtil.departmentIdFromToken(token);
-            Long companyId = jwtUtil.companyFromToken(token);
-
-            EmployeePrincipal employeePrincipal = new EmployeePrincipal(employeeId, firstName, role, employeeType, departmentId, companyId);
-            var auth = new UsernamePasswordAuthenticationToken(employeePrincipal, null, employeePrincipal.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(auth);
-        }
-        catch (JwtException jwtException) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().print("{\"error\":\"invalid_or_expired_token\"}");
-            return;
-        }
+    try {
+      if (SecurityContextHolder.getContext().getAuthentication() != null) {
         filterChain.doFilter(request, response);
+        return;
+      }
+      Long employeeId = jwtUtil.employeeIdFromToken(token);
+      String firstName = jwtUtil.nameFromToken(token);
+      Role role = jwtUtil.roleFromToken(token);
+      EmployeeType employeeType = jwtUtil.employeeTypeFromToken(token);
+      Long departmentId = jwtUtil.departmentIdFromToken(token);
+      Long companyId = jwtUtil.companyFromToken(token);
+
+      EmployeePrincipal employeePrincipal = new EmployeePrincipal(employeeId, firstName, role, employeeType, departmentId, companyId);
+      var auth = new UsernamePasswordAuthenticationToken(employeePrincipal, null, employeePrincipal.getAuthorities());
+      SecurityContextHolder.getContext().setAuthentication(auth);
+    } catch (JwtException jwtException) {
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      response.setContentType("application/json");
+      response.getWriter().print("{\"error\":\"invalid_or_expired_token\"}");
+      return;
     }
+    filterChain.doFilter(request, response);
+  }
 
 }

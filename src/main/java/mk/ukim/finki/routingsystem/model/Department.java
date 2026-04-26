@@ -3,28 +3,40 @@ package mk.ukim.finki.routingsystem.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+/**
+ * Entity representing a department in the system.
+ */
+
 @Entity
 @Data
+@Table(
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "department_key_constraint",
+                        columnNames = {"company_id", "department_key"})
+        }
+)
 public class Department {
 
-    @Id
-    @GeneratedValue
-    private Long id;
+  @Id
+  @GeneratedValue
+  private Long id;
 
-    private String name;
+  private String name;
 
-    @ManyToOne
-    private Company company;
+  @ManyToOne
+  @JoinColumn(name = "company_id")
+  private Company company;
 
-    @Column(unique = true)
-    private String departmentKey;
+  @Column(name = "department_key")
+  private String departmentKey;
 
-    public Department() {
-    }
+  public Department() {
+  }
 
-    public Department(String name, String departmentKey, Company company) {
-        this.name = name;
-        this.departmentKey = departmentKey;
-        this.company = company;
-    }
+  public Department(String name, String departmentKey, Company company) {
+    this.name = name;
+    this.departmentKey = departmentKey;
+    this.company = company;
+  }
 }

@@ -17,45 +17,48 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller for admin-specific document operations.
+ */
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminDocumentRestController {
 
-    private final DocumentService documentService;
-    private final DepartmentRepository departmentRepository;
-    private final DocumentActionService documentActionService;
+  private final DocumentService documentService;
+  private final DepartmentRepository departmentRepository;
+  private final DocumentActionService documentActionService;
 
-    public AdminDocumentRestController(DocumentService documentService, DepartmentRepository departmentRepository, DocumentActionService documentActionService) {
-        this.documentService = documentService;
-        this.departmentRepository = departmentRepository;
-        this.documentActionService = documentActionService;
-    }
+  public AdminDocumentRestController(DocumentService documentService, DepartmentRepository departmentRepository, DocumentActionService documentActionService) {
+    this.documentService = documentService;
+    this.departmentRepository = departmentRepository;
+    this.documentActionService = documentActionService;
+  }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/departments/{departmentId}/routed-documents")
-    public ResponseEntity<Page<DisplayAdminDocumentDto>> getRoutedToDepartmentByAdmin(@PathVariable Long departmentId,
-                                                                                      @AuthenticationPrincipal EmployeePrincipal employeePrincipal,
-                                                                                      Pageable pageable) {
-        departmentRepository.findByIdAndCompany_Id(departmentId, employeePrincipal.getCompanyId())
-                .orElseThrow(() -> new DepartmentNotFoundException("Department not found."));
+  @PreAuthorize("hasRole('ADMIN')")
+  @GetMapping("/departments/{departmentId}/routed-documents")
+  public ResponseEntity<Page<DisplayAdminDocumentDto>> getRoutedToDepartmentByAdmin(@PathVariable Long departmentId,
+                                                                                    @AuthenticationPrincipal EmployeePrincipal employeePrincipal,
+                                                                                    Pageable pageable) {
+    departmentRepository.findByIdAndCompany_Id(departmentId, employeePrincipal.companyId())
+            .orElseThrow(() -> new DepartmentNotFoundException("Department not found."));
 
 
-        Page<DisplayAdminDocumentDto> adminDocumentDto = documentService.findAllByRoutedToDepartmentByAdmin(departmentId, employeePrincipal.getCompanyId(), pageable);
+    Page<DisplayAdminDocumentDto> adminDocumentDto = documentService.findAllByRoutedToDepartmentByAdmin(departmentId, employeePrincipal.companyId(), pageable);
 
-        return ResponseEntity.ok(adminDocumentDto);
-    }
+    return ResponseEntity.ok(adminDocumentDto);
+  }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/employees/{employeeId}/documents/{documentId}/actions")
-    public ResponseEntity<List<DisplayDocumentActionDto>> listAllActionsFromEmployee (@PathVariable Long employeeId,
-                                                                                      @PathVariable Long documentId,
-                                                                                      @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+  @PreAuthorize("hasRole('ADMIN')")
+  @GetMapping("/employees/{employeeId}/documents/{documentId}/actions")
+  public ResponseEntity<List<DisplayDocumentActionDto>> listAllActionsFromEmployee(@PathVariable Long employeeId,
+                                                                                   @PathVariable Long documentId,
+                                                                                   @AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
-        List<DisplayDocumentActionDto> documentActions = documentActionService.findAllBySpecificEmployee(documentId, employeeId, employeePrincipal.getCompanyId());
+    List<DisplayDocumentActionDto> documentActions = documentActionService.findAllBySpecificEmployee(documentId, employeeId, employeePrincipal.companyId());
 
-        return documentActions.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(documentActions);
+    return documentActions.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(documentActions);
 
-    }
+  }
 }
 

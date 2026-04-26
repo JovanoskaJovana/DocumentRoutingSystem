@@ -12,21 +12,25 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * REST controller for managing manual reviews.
+ */
+
 @RestController
 @RequestMapping("/api/suggestions")
 public class ManualReviewActionRestController {
 
-    private final ManualReviewActionService manualReviewActionService;
+  private final ManualReviewActionService manualReviewActionService;
 
-    public ManualReviewActionRestController(ManualReviewActionService manualReviewActionService) {
-        this.manualReviewActionService = manualReviewActionService;
-    }
+  public ManualReviewActionRestController(ManualReviewActionService manualReviewActionService) {
+    this.manualReviewActionService = manualReviewActionService;
+  }
 
-    @GetMapping
-    ResponseEntity<List<KeywordSuggestionDto>> getKeywordSuggestions(@AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
+  @GetMapping
+  ResponseEntity<List<KeywordSuggestionDto>> getKeywordSuggestions(@AuthenticationPrincipal EmployeePrincipal employeePrincipal) {
 
-        List<KeywordSuggestionDto> suggestions = manualReviewActionService.suggestAllKeywords(employeePrincipal.getCompanyId());
+    List<KeywordSuggestionDto> suggestions = manualReviewActionService.suggestAllKeywords(employeePrincipal.companyId());
 
-        return ResponseEntity.status(HttpStatus.OK).body(suggestions);
-    }
+    return ResponseEntity.status(HttpStatus.OK).body(suggestions);
+  }
 }

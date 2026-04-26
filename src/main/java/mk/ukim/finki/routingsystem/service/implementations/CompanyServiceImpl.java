@@ -12,55 +12,58 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+/**
+ * Implementation of {@link CompanyService}.
+ */
 @Service
 public class CompanyServiceImpl implements CompanyService {
 
-    private final CompanyRepository companyRepository;
-    private final CompanyMapper companyMapper;
+  private final CompanyRepository companyRepository;
+  private final CompanyMapper companyMapper;
 
-    public CompanyServiceImpl(CompanyRepository companyRepository, CompanyMapper companyMapper) {
-        this.companyRepository = companyRepository;
-        this.companyMapper = companyMapper;
+  public CompanyServiceImpl(CompanyRepository companyRepository, CompanyMapper companyMapper) {
+    this.companyRepository = companyRepository;
+    this.companyMapper = companyMapper;
+  }
+
+  @Override
+  public ResponseCompanyDto findCompanyById(Long companyId) {
+    return companyMapper.toDto(companyRepository.findById(companyId).orElseThrow(() -> new CompanyNotFoundException("Company not found")));
+  }
+
+  @Override
+  public Page<ResponseCompanyDto> listAll(Pageable pageable) {
+    return companyRepository.findAll(pageable).map(companyMapper::toDto);
+  }
+
+  @Override
+  public ResponseCompanyDto save(CreateCompanyDto createCompanyDto) {
+
+    String code = createCompanyDto.code().trim().toLowerCase();
+
+    if (companyRepository.existsByCode(code)) {
+      throw new CompanyAlreadyExistsException("Company already exists");
     }
 
-    @Override
-    public ResponseCompanyDto findCompanyById(Long companyId) {
-        return companyMapper.toDto(companyRepository.findById(companyId).orElseThrow(() -> new CompanyNotFoundException("Company not found")));
-    }
+    Company company = new Company();
+    company.setName(createCompanyDto.name());
+    company.setCode(createCompanyDto.code());
+    company.setActive(true);
 
-    @Override
-    public Page<ResponseCompanyDto> listAll(Pageable pageable) {
-        return companyRepository.findAll(pageable).map(companyMapper::toDto);
-    }
+    companyRepository.save(company);
 
-    @Override
-    public ResponseCompanyDto save(CreateCompanyDto createCompanyDto) {
+    return companyMapper.toDto(company);
+  }
 
-        String code = createCompanyDto.code().trim().toLowerCase();
+  @Override
+  public ResponseCompanyDto changeActivity(Long companyId) {
 
-        if (companyRepository.existsByCode(code)) {
-            throw new CompanyAlreadyExistsException("Company already exists");
-        }
+    Company company = companyRepository.findById(companyId).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
 
-        Company company = new Company();
-        company.setName(createCompanyDto.name());
-        company.setCode(createCompanyDto.code());
-        company.setActive(true);
+    company.setActive(Boolean.FALSE.equals(company.getActive()));
 
-        companyRepository.save(company);
+    companyRepository.save(company);
 
-        return companyMapper.toDto(company);
-    }
-
-    @Override
-    public ResponseCompanyDto changeActivity(Long companyId) {
-
-        Company company = companyRepository.findById(companyId).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
-
-        company.setActive(Boolean.FALSE.equals(company.getActive()));
-
-        companyRepository.save(company);
-
-        return companyMapper.toDto(company);
-    }
+    return companyMapper.toDto(company);
+  }
 }
