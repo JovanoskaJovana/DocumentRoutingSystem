@@ -129,3 +129,19 @@ The department with the highest score wins, provided it clears the minimum confi
 5. A signatory employee in the routed department approves or rejects the document.
 6. All versions, actions and routing decisions are tracked throughout.
 7. Admin reviews keyword suggestions generated from manual routing history to improve future routing accuracy.
+
+## Running with Docker
+
+This service is intended to be run as part of the full stack via Docker Compose.
+See [DocumentRoutingSystem-Infrastructure](https://github.com/JovanoskaJovana/DocumentRoutingSystem-Infrastructure)
+for setup instructions.
+
+To run the backend in isolation:
+
+```bash
+docker build -t routing-system-backend:1.0 .
+docker run -p 8080:8080 routing-system-backend:1.0
+```
+
+> Note: Running in isolation requires a PostgreSQL instance to be available
+> and the environment variables to be set manually.
